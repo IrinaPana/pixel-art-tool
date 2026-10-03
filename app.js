@@ -2,13 +2,15 @@
 
 const SUPPORTED_TYPES = ['image/png', 'image/jpeg'];
 const SUPPORTED_EXTENSIONS = /\.(png|jpe?g)$/i;
+const PICK_TRANSPARENT_MESSAGE = 'Transparent pixel — pick another one.';
 
 const state = {
     originalImage: null, // ImageData; никогда не изменяется
     resultImage: null,   // ImageData; производный результат, пересчитывается из originalImage
     fileName: '',
     settings: createDefaultSettings(),
-    zoom: 1
+    zoom: 1,
+    isPicking: false // режим пипетки; UI-состояние, не настройка обработки
 };
 
 let loadRequestId = 0;
@@ -24,7 +26,15 @@ const els = {
     zoomButtons: document.querySelectorAll('[data-zoom]'),
     fileNameValue: document.getElementById('file-name-value'),
     sizeValue: document.getElementById('size-value'),
-    status: document.getElementById('status')
+    status: document.getElementById('status'),
+    bgEnabled: document.getElementById('bg-enabled'),
+    bgOptions: document.getElementById('bg-options'),
+    bgColor: document.getElementById('bg-color'),
+    bgColorValue: document.getElementById('bg-color-value'),
+    bgPickButton: document.getElementById('bg-pick-button'),
+    bgTolerance: document.getElementById('bg-tolerance'),
+    bgToleranceValue: document.getElementById('bg-tolerance-value'),
+    bgModeInputs: document.querySelectorAll('input[name="bg-mode"]')
 };
 
 const previewContext = els.canvas.getContext('2d');
@@ -33,7 +43,12 @@ const previewContext = els.canvas.getContext('2d');
 // с независимыми группами. Параметры групп добавляются вместе с инструментами.
 function createDefaultSettings() {
     return {
-        background: {},
+        background: {
+            enabled: false,
+            color: '#ffffff',
+            tolerance: 0,
+            mode: 'connected'
+        },
         transform: {},
         resize: {},
         crop: {}
@@ -72,6 +87,7 @@ function render() {
         button.disabled = !hasImage;
         button.setAttribute('aria-pressed', String(Number(button.dataset.zoom) === state.zoom));
     });
+    renderBackgroundControls(hasImage);
 
     if (!hasImage) {
         els.fileNameValue.textContent = '—';
@@ -88,6 +104,26 @@ function render() {
 
     els.fileNameValue.textContent = state.fileName;
     els.sizeValue.textContent = `${result.width} × ${result.height} px`;
+}
+
+// Контролы Background всегда отражают state.settings.background и state.isPicking.
+function renderBackgroundControls(hasImage) {
+    const background = state.settings.background;
+
+    els.bgEnabled.disabled = !hasImage;
+    els.bgEnabled.checked = background.enabled;
+    els.bgOptions.disabled = !hasImage || !background.enabled;
+
+    els.bgColor.value = background.color;
+    els.bgColorValue.textContent = background.color.toUpperCase();
+    els.bgTolerance.value = String(background.tolerance);
+    els.bgToleranceValue.textContent = String(background.tolerance);
+    els.bgModeInputs.forEach((input) => {
+        input.checked = input.value === background.mode;
+    });
+
+    els.bgPickButton.setAttribute('aria-pressed', String(state.isPicking));
+    els.canvas.classList.toggle('is-picking', state.isPicking);
 }
 
 function showStatus(message, isError = false) {
@@ -129,6 +165,7 @@ async function loadFile(file) {
     state.fileName = file.name;
     state.settings = createDefaultSettings();
     state.zoom = 1;
+    state.isPicking = false;
     showStatus('');
     reprocess();
 }
@@ -186,6 +223,47 @@ function sourceToImageData(source, width, height) {
     return context.getImageData(0, 0, width, height);
 }
 
+// ---------- Color picking ----------
+
+// Убирает только подсказку пипетки; ошибки загрузки и прочие сообщения остаются.
+function clearPickingStatus() {
+    if (els.status.textContent === PICK_TRANSPARENT_MESSAGE) showStatus('');
+}
+
+function setPicking(active) {
+    state.isPicking = active;
+    clearPickingStatus();
+    render();
+}
+
+function rgbToHex(r, g, b) {
+    return '#' + [r, g, b].map((value) => value.toString(16).padStart(2, '0')).join('');
+}
+
+// Пипетка выбирает только цвет. Читает оригинал: так можно повторно выбрать
+// уже удалённый цвет. На этом этапе геометрия оригинала и результата совпадает.
+function pickColor(event) {
+    const image = state.originalImage;
+    if (!state.isPicking || !image) return;
+
+    const rect = els.canvas.getBoundingClientRect();
+    const x = Math.min(image.width - 1, Math.max(0,
+        Math.floor((event.clientX - rect.left) * els.canvas.width / rect.width)));
+    const y = Math.min(image.height - 1, Math.max(0,
+        Math.floor((event.clientY - rect.top) * els.canvas.height / rect.height)));
+
+    const i = (y * image.width + x) * 4;
+    const data = image.data;
+    if (data[i + 3] === 0) {
+        showStatus(PICK_TRANSPARENT_MESSAGE);
+        return;
+    }
+
+    state.isPicking = false;
+    clearPickingStatus();
+    updateSettings('background', { color: rgbToHex(data[i], data[i + 1], data[i + 2]) });
+}
+
 // ---------- Actions ----------
 
 function exportPng() {
@@ -219,6 +297,7 @@ function reset() {
     if (!state.originalImage) return;
     state.settings = createDefaultSettings();
     state.zoom = 1;
+    state.isPicking = false;
     showStatus('');
     reprocess();
 }
@@ -241,6 +320,36 @@ els.zoomButtons.forEach((button) => {
         state.zoom = Number(button.dataset.zoom);
         render();
     });
+});
+
+els.bgEnabled.addEventListener('change', () => {
+    if (!els.bgEnabled.checked) {
+        state.isPicking = false; // пипетка становится недоступной — завершаем выбор
+        clearPickingStatus();
+    }
+    updateSettings('background', { enabled: els.bgEnabled.checked });
+});
+
+els.bgColor.addEventListener('input', () => {
+    updateSettings('background', { color: els.bgColor.value });
+});
+
+els.bgTolerance.addEventListener('input', () => {
+    updateSettings('background', { tolerance: Number(els.bgTolerance.value) });
+});
+
+els.bgModeInputs.forEach((input) => {
+    input.addEventListener('change', () => {
+        if (input.checked) updateSettings('background', { mode: input.value });
+    });
+});
+
+els.bgPickButton.addEventListener('click', () => setPicking(!state.isPicking));
+
+els.canvas.addEventListener('click', pickColor);
+
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && state.isPicking) setPicking(false);
 });
 
 // Не даём браузеру открыть файл, брошенный мимо drop-зоны.
