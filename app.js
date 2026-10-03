@@ -5,6 +5,7 @@ const SUPPORTED_EXTENSIONS = /\.(png|jpe?g)$/i;
 
 const state = {
     originalImage: null, // ImageData; никогда не изменяется
+    resultImage: null,   // ImageData; производный результат, пересчитывается из originalImage
     fileName: '',
     settings: createDefaultSettings(),
     zoom: 1
@@ -28,16 +29,41 @@ const els = {
 
 const previewContext = els.canvas.getContext('2d');
 
-// Настройки обработки по умолчанию. Каждый вызов — новый объект.
-// Поля добавляются на этапах Background / Transform / Resize / Crop.
+// Настройки обработки по умолчанию. Каждый вызов создаёт новый объект
+// с независимыми группами. Параметры групп добавляются вместе с инструментами.
 function createDefaultSettings() {
-    return {};
+    return {
+        background: {},
+        transform: {},
+        resize: {},
+        crop: {}
+    };
+}
+
+// ---------- Processing ----------
+
+// Полный пересчёт результата из оригинала. Предыдущий результат не используется.
+function reprocess() {
+    state.resultImage = state.originalImage
+        ? ImageProcessing.process(state.originalImage, state.settings)
+        : null;
+    render();
+}
+
+// Единая точка изменения настроек обработки для контролов.
+function updateSettings(group, patch) {
+    if (!Object.prototype.hasOwnProperty.call(state.settings, group)) {
+        throw new Error(`Unknown settings group: ${group}`);
+    }
+    state.settings[group] = Object.assign({}, state.settings[group], patch);
+    reprocess();
 }
 
 // ---------- Render ----------
 
 function render() {
-    const hasImage = state.originalImage !== null;
+    const result = state.resultImage;
+    const hasImage = result !== null;
 
     els.previewArea.classList.toggle('has-image', hasImage);
     els.exportButton.disabled = !hasImage;
@@ -52,8 +78,6 @@ function render() {
         els.sizeValue.textContent = '—';
         return;
     }
-
-    const result = ImageProcessing.process(state.originalImage, state.settings);
 
     if (els.canvas.width !== result.width) els.canvas.width = result.width;
     if (els.canvas.height !== result.height) els.canvas.height = result.height;
@@ -106,7 +130,7 @@ async function loadFile(file) {
     state.settings = createDefaultSettings();
     state.zoom = 1;
     showStatus('');
-    render();
+    reprocess();
 }
 
 async function decodeFile(file) {
@@ -165,7 +189,7 @@ function sourceToImageData(source, width, height) {
 // ---------- Actions ----------
 
 function exportPng() {
-    if (!state.originalImage) return;
+    if (!state.resultImage) return;
     const fileName = getExportFileName(state.fileName);
 
     // Preview canvas содержит результат в натуральном размере;
@@ -196,7 +220,7 @@ function reset() {
     state.settings = createDefaultSettings();
     state.zoom = 1;
     showStatus('');
-    render();
+    reprocess();
 }
 
 // ---------- Events ----------
