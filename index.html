@@ -36,6 +36,32 @@
             </section>
 
             <section class="panel-group">
+                <h2>Background</h2>
+                <label class="check">
+                    <input id="bg-enabled" type="checkbox" disabled>
+                    Remove background
+                </label>
+                <fieldset id="bg-options" class="options" disabled>
+                    <div class="color-row">
+                        <input id="bg-color" type="color" value="#ffffff" aria-label="Background color">
+                        <output id="bg-color-value" for="bg-color">#FFFFFF</output>
+                        <button id="bg-pick-button" type="button" aria-pressed="false"
+                                title="Pick color from image (Esc to cancel)">Pick</button>
+                    </div>
+                    <label class="field">
+                        <span class="field-label">
+                            Tolerance <output id="bg-tolerance-value" for="bg-tolerance">0</output>
+                        </span>
+                        <input id="bg-tolerance" type="range" min="0" max="255" step="1" value="0">
+                    </label>
+                    <div class="radio-list" role="radiogroup" aria-label="Mode">
+                        <label><input type="radio" name="bg-mode" value="all"> All matching pixels</label>
+                        <label><input type="radio" name="bg-mode" value="connected" checked> Connected background</label>
+                    </div>
+                </fieldset>
+            </section>
+
+            <section class="panel-group">
                 <h2>Image</h2>
                 <dl class="info">
                     <dt>File</dt>
