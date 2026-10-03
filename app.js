@@ -34,7 +34,8 @@ const els = {
     bgPickButton: document.getElementById('bg-pick-button'),
     bgTolerance: document.getElementById('bg-tolerance'),
     bgToleranceValue: document.getElementById('bg-tolerance-value'),
-    bgModeInputs: document.querySelectorAll('input[name="bg-mode"]')
+    bgModeInputs: document.querySelectorAll('input[name="bg-mode"]'),
+    transformButtons: document.querySelectorAll('[data-transform]')
 };
 
 const previewContext = els.canvas.getContext('2d');
@@ -49,7 +50,11 @@ function createDefaultSettings() {
             tolerance: 0,
             mode: 'connected'
         },
-        transform: {},
+        transform: {
+            quarterTurns: 0, // 0–3, по часовой стрелке
+            flipX: false,
+            flipY: false
+        },
         resize: {},
         crop: {}
     };
@@ -86,6 +91,9 @@ function render() {
     els.zoomButtons.forEach((button) => {
         button.disabled = !hasImage;
         button.setAttribute('aria-pressed', String(Number(button.dataset.zoom) === state.zoom));
+    });
+    els.transformButtons.forEach((button) => {
+        button.disabled = !hasImage;
     });
     renderBackgroundControls(hasImage);
 
@@ -223,6 +231,27 @@ function sourceToImageData(source, width, height) {
     return context.getImageData(0, 0, width, height);
 }
 
+// ---------- Transform ----------
+
+// Команды действуют относительно текущего preview. В обработке порядок
+// фиксирован (поворот → отражения), поэтому при повороте флаги отражений
+// меняются местами: поворот отражённого изображения = отражение по другой оси
+// после поворота.
+function applyTransformCommand(command) {
+    if (!state.originalImage) return;
+    const t = state.settings.transform;
+
+    if (command === 'rotate-right') {
+        updateSettings('transform', { quarterTurns: (t.quarterTurns + 1) % 4, flipX: t.flipY, flipY: t.flipX });
+    } else if (command === 'rotate-left') {
+        updateSettings('transform', { quarterTurns: (t.quarterTurns + 3) % 4, flipX: t.flipY, flipY: t.flipX });
+    } else if (command === 'flip-x') {
+        updateSettings('transform', { flipX: !t.flipX });
+    } else if (command === 'flip-y') {
+        updateSettings('transform', { flipY: !t.flipY });
+    }
+}
+
 // ---------- Color picking ----------
 
 // Убирает только подсказку пипетки; ошибки загрузки и прочие сообщения остаются.
@@ -241,18 +270,21 @@ function rgbToHex(r, g, b) {
 }
 
 // Пипетка выбирает только цвет. Читает оригинал: так можно повторно выбрать
-// уже удалённый цвет. На этом этапе геометрия оригинала и результата совпадает.
+// уже удалённый цвет. Resize и Crop пока не меняют геометрию, поэтому точка
+// preview переводится в оригинал только обратной трансформацией.
 function pickColor(event) {
     const image = state.originalImage;
     if (!state.isPicking || !image) return;
 
     const rect = els.canvas.getBoundingClientRect();
-    const x = Math.min(image.width - 1, Math.max(0,
+    const previewX = Math.min(els.canvas.width - 1, Math.max(0,
         Math.floor((event.clientX - rect.left) * els.canvas.width / rect.width)));
-    const y = Math.min(image.height - 1, Math.max(0,
+    const previewY = Math.min(els.canvas.height - 1, Math.max(0,
         Math.floor((event.clientY - rect.top) * els.canvas.height / rect.height)));
+    const point = ImageProcessing.inverseTransformPoint(
+        previewX, previewY, image.width, image.height, state.settings.transform);
 
-    const i = (y * image.width + x) * 4;
+    const i = (point.y * image.width + point.x) * 4;
     const data = image.data;
     if (data[i + 3] === 0) {
         showStatus(PICK_TRANSPARENT_MESSAGE);
@@ -345,6 +377,10 @@ els.bgModeInputs.forEach((input) => {
 });
 
 els.bgPickButton.addEventListener('click', () => setPicking(!state.isPicking));
+
+els.transformButtons.forEach((button) => {
+    button.addEventListener('click', () => applyTransformCommand(button.dataset.transform));
+});
 
 els.canvas.addEventListener('click', pickColor);
 

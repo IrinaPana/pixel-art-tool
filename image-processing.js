@@ -84,8 +84,67 @@ const ImageProcessing = (function () {
         return image;
     }
 
+    // Размер результата поворота: при 90°/270° ширина и высота меняются местами.
+    function getTransformedSize(width, height, options) {
+        return options.quarterTurns % 2 === 1
+            ? { width: height, height: width }
+            : { width: width, height: height };
+    }
+
+    // Поворот на quarterTurns × 90° по часовой стрелке, затем отражения
+    // в координатах повёрнутого изображения. Один проход, без интерполяции.
+    // Для W × H источника пиксель (x, y) переходит в:
+    //   0°:   (x, y)
+    //   90°:  (H − 1 − y, x)
+    //   180°: (W − 1 − x, H − 1 − y)
+    //   270°: (y, W − 1 − x)
     function applyTransform(image, options) {
-        return image;
+        const turns = options.quarterTurns;
+        if (turns === 0 && !options.flipX && !options.flipY) return image;
+
+        const srcWidth = image.width;
+        const srcHeight = image.height;
+        const size = getTransformedSize(srcWidth, srcHeight, options);
+        const outWidth = size.width;
+        const outHeight = size.height;
+        const result = new ImageData(outWidth, outHeight);
+
+        // Пиксель RGBA переносится целиком как одно 32-битное слово.
+        const src = new Uint32Array(image.data.buffer, image.data.byteOffset, srcWidth * srcHeight);
+        const dst = new Uint32Array(result.data.buffer, result.data.byteOffset, outWidth * outHeight);
+
+        for (let y = 0; y < srcHeight; y++) {
+            for (let x = 0; x < srcWidth; x++) {
+                let dx;
+                let dy;
+                if (turns === 0) { dx = x; dy = y; }
+                else if (turns === 1) { dx = srcHeight - 1 - y; dy = x; }
+                else if (turns === 2) { dx = srcWidth - 1 - x; dy = srcHeight - 1 - y; }
+                else { dx = y; dy = srcWidth - 1 - x; }
+
+                if (options.flipX) dx = outWidth - 1 - dx;
+                if (options.flipY) dy = outHeight - 1 - dy;
+
+                dst[dy * outWidth + dx] = src[y * srcWidth + x];
+            }
+        }
+
+        return result;
+    }
+
+    // Обратное преобразование точки результата Transform в точку исходного
+    // изображения width × height: сначала отменяются отражения, затем поворот.
+    function inverseTransformPoint(x, y, width, height, options) {
+        const size = getTransformedSize(width, height, options);
+        if (options.flipX) x = size.width - 1 - x;
+        if (options.flipY) y = size.height - 1 - y;
+
+        switch (options.quarterTurns) {
+            case 1: return { x: y, y: height - 1 - x };
+            case 2: return { x: width - 1 - x, y: height - 1 - y };
+            case 3: return { x: width - 1 - y, y: x };
+            default: return { x: x, y: y };
+        }
     }
 
     function applyResize(image, options) {
@@ -112,6 +171,7 @@ const ImageProcessing = (function () {
 
     return {
         cloneImageData,
+        inverseTransformPoint,
         process
     };
 })();

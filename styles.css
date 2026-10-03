@@ -152,6 +152,14 @@ button.primary {
     color: var(--accent-text);
 }
 
+.button-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 4px;
+}
+
+.button-grid button { padding: 6px 0; }
+
 .check,
 .radio-list label {
     display: flex;
