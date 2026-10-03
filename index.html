@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pixel Art Image Tool</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="image-processing.js" defer></script>
+    <script src="app.js" defer></script>
+</head>
+<body>
+    <header class="toolbar">
+        <button id="open-button" type="button">Open</button>
+        <button id="export-button" type="button" class="primary" disabled>Export PNG</button>
+        <button id="reset-button" type="button" disabled>Reset</button>
+        <input id="file-input" type="file" accept="image/png,image/jpeg" hidden>
+    </header>
+
+    <main class="workspace">
+        <section id="preview-area" class="preview-area" aria-label="Preview">
+            <div class="preview-stage">
+                <canvas id="preview-canvas"></canvas>
+            </div>
+            <p class="empty-hint">Open or drop a PNG or JPEG image</p>
+        </section>
+
+        <aside class="panel">
+            <section class="panel-group">
+                <h2>Zoom</h2>
+                <div class="segmented" role="group" aria-label="Zoom">
+                    <button type="button" data-zoom="1" disabled>100%</button>
+                    <button type="button" data-zoom="2" disabled>200%</button>
+                    <button type="button" data-zoom="4" disabled>400%</button>
+                    <button type="button" data-zoom="8" disabled>800%</button>
+                </div>
+            </section>
+
+            <section class="panel-group">
+                <h2>Image</h2>
+                <dl class="info">
+                    <dt>File</dt>
+                    <dd id="file-name-value">—</dd>
+                    <dt>Size</dt>
+                    <dd id="size-value">—</dd>
+                </dl>
+            </section>
+
+            <p id="status" class="status" role="status" aria-live="polite"></p>
+        </aside>
+    </main>
+</body>
+</html>
