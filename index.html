@@ -42,11 +42,6 @@
         <symbol id="icon-plus" viewBox="0 0 16 16">
             <path d="M8 3.33v9.34M3.33 8h9.34"/>
         </symbol>
-        <!-- anchor: стрелка вверх, направление задаётся transform: rotate(...) на <svg> -->
-        <symbol id="icon-arrow" viewBox="0 0 16 16">
-            <path d="M3.33 8 8 3.33 12.67 8"/>
-            <path d="M8 12.67V3.33"/>
-        </symbol>
         <symbol id="icon-dot" viewBox="0 0 16 16">
             <circle cx="8" cy="8" r="2" fill="currentColor" stroke="none"/>
         </symbol>
@@ -77,7 +72,7 @@
         </section>
 
         <aside class="app-sidebar" aria-label="Settings">
-            <section class="sidebar-section background-section" aria-labelledby="bg-heading">
+            <section class="sidebar-section" aria-labelledby="bg-heading">
                 <div class="section-header">
                     <h2 id="bg-heading" class="section-heading">Background</h2>
                     <input id="bg-enabled" type="checkbox" role="switch" class="section-toggle"
@@ -93,7 +88,7 @@
                                 <input id="bg-color" type="color" value="#ffffff">
                             </div>
                             <button id="bg-pick-button" type="button" class="button button--secondary"
-                                    aria-pressed="false" title="Pick color from image (Esc to cancel)">Pick</button>
+                                    aria-pressed="false">Pick</button>
                         </div>
                     </div>
                     <div class="control-row">
@@ -113,8 +108,10 @@
 
             <hr class="divider">
 
-            <section class="sidebar-section transform-section" aria-labelledby="transform-heading">
-                <h2 id="transform-heading" class="section-heading">Transform</h2>
+            <section class="sidebar-section" aria-labelledby="transform-heading">
+                <div class="section-header">
+                    <h2 id="transform-heading" class="section-heading">Transform</h2>
+                </div>
                 <fieldset id="transform-options" class="control-fieldset" disabled>
                     <div class="button-row" role="group" aria-labelledby="transform-heading">
                         <button type="button" class="icon-button" data-transform="rotate-left"
@@ -139,8 +136,10 @@
 
             <hr class="divider">
 
-            <section class="sidebar-section resize-section" aria-labelledby="resize-heading">
-                <h2 id="resize-heading" class="section-heading">Resize</h2>
+            <section class="sidebar-section" aria-labelledby="resize-heading">
+                <div class="section-header">
+                    <h2 id="resize-heading" class="section-heading">Resize</h2>
+                </div>
                 <fieldset id="resize-options" class="control-fieldset" disabled>
                     <div class="value-row">
                         <label class="value-field">
@@ -173,7 +172,7 @@
 
             <hr class="divider">
 
-            <section class="sidebar-section crop-section" aria-labelledby="crop-heading">
+            <section class="sidebar-section" aria-labelledby="crop-heading">
                 <div class="section-header">
                     <h2 id="crop-heading" class="section-heading">Crop</h2>
                     <input id="crop-enabled" type="checkbox" role="switch" class="section-toggle"

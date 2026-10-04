@@ -199,13 +199,8 @@ function render() {
         const hasImage = result !== null;
 
         els.previewArea.classList.toggle('has-image', hasImage);
-        els.resetButton.disabled = !hasImage;
-        const zoomIndex = ZOOM_LEVELS.indexOf(state.zoom);
-        els.zoomSelect.disabled = !hasImage;
-        els.zoomSelect.value = String(state.zoom);
-        els.zoomOutButton.disabled = !hasImage || zoomIndex <= 0;
-        els.zoomInButton.disabled = !hasImage || zoomIndex >= ZOOM_LEVELS.length - 1;
         els.transformOptions.disabled = !hasImage;
+        renderZoomControls(hasImage);
         renderBackgroundControls(hasImage);
         renderResizeControls(hasImage);
         renderCropControls(hasImage);
@@ -229,6 +224,15 @@ function render() {
     }
 }
 
+// Zoom — состояние просмотра (state.zoom), а не настройка обработки.
+function renderZoomControls(hasImage) {
+    const zoomIndex = ZOOM_LEVELS.indexOf(state.zoom);
+    els.zoomSelect.disabled = !hasImage;
+    els.zoomSelect.value = String(state.zoom);
+    els.zoomOutButton.disabled = !hasImage || zoomIndex <= 0;
+    els.zoomInButton.disabled = !hasImage || zoomIndex >= ZOOM_LEVELS.length - 1;
+}
+
 // Контролы, зависящие от исправности preview: экспорт читает canvas,
 // пипетка — координаты canvas. При недоступном preview режим пипетки
 // сбрасывается, чтобы не включиться неожиданно после восстановления.
@@ -236,10 +240,16 @@ function renderPreviewControls() {
     const isPreviewReady = state.resultImage !== null && !state.previewFailed;
     if (!isPreviewReady) state.isPicking = false;
 
-    els.exportButton.disabled = !isPreviewReady || hasCropConflict();
+    renderToolbarControls(isPreviewReady);
     els.bgPickButton.disabled = !isPreviewReady || !state.settings.background.enabled;
     els.bgPickButton.setAttribute('aria-pressed', String(state.isPicking));
     els.canvas.classList.toggle('is-picking', state.isPicking);
+}
+
+// Reset — при загруженном изображении; Export — при исправном preview без конфликта Crop.
+function renderToolbarControls(isPreviewReady) {
+    els.resetButton.disabled = state.resultImage === null;
+    els.exportButton.disabled = !isPreviewReady || hasCropConflict();
 }
 
 // Контролы Background отражают state.settings.background; выключенный этап —
@@ -783,7 +793,7 @@ function stepZoom(direction, button) {
 // ---------- UI components ----------
 
 const TOOLTIP_DELAY = 450; // ms
-const TOOLTIP_GAP = 6;     // px между элементом и tooltip
+const TOOLTIP_GAP = 8;     // px между элементом и tooltip (--space-2)
 const TOOLTIP_MARGIN = 4;  // px минимальный отступ от края окна
 const tooltipElement = document.getElementById('tooltip');
 let tooltipTimer = 0;
@@ -799,7 +809,7 @@ function syncRangeFill(input) {
 // Swatch и hex у .color-control. Вызывать и после программной смены value.
 function syncColorControl(input) {
     const control = input.closest('.color-control');
-    control.querySelector('.color-swatch').style.backgroundColor = input.value;
+    control.style.setProperty('--swatch-color', input.value);
     control.querySelector('.color-value').textContent = input.value.toUpperCase();
 }
 

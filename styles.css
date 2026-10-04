@@ -1,10 +1,3 @@
-* { box-sizing: border-box; }
-
-/* hidden сильнее display у layout-классов (.control-row, .value-row, .control-fieldset) */
-[hidden] { display: none !important; }
-
-html, body { height: 100%; margin: 0; }
-
 /* ==========================================================================
    Design system — tokens
    ========================================================================== */
@@ -73,6 +66,7 @@ html, body { height: 100%; margin: 0; }
     --input-narrow-width: 56px;
     --icon-size: 16px;
     --tooltip-max-width: 240px;
+    --bottom-bar-file-width: 240px;
 
     /* Radii */
     --radius-sm: 4px;
@@ -82,8 +76,28 @@ html, body { height: 100%; margin: 0; }
     /* States */
     --border-width: 1px;
     --focus-ring: 0 0 0 2px var(--color-accent-soft);
+    --selected-ring-inset: inset 0 0 0 var(--border-width) var(--color-accent);
+    --focus-ring-inset:
+        inset 0 0 0 var(--border-width) var(--color-accent),
+        inset 0 0 0 calc(var(--border-width) + 2px) var(--color-accent-soft);
     --transition-fast: 120ms ease;
     --disabled-opacity: 0.55;
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+
+* { box-sizing: border-box; }
+
+/* hidden сильнее display у layout-классов (.control-row, .value-row, .control-fieldset) */
+[hidden] { display: none !important; }
+
+/* Страница не прокручивается: высоту задаёт grid .app, скроллятся только preview и sidebar */
+html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
 }
 
 /* ==========================================================================
@@ -91,7 +105,7 @@ html, body { height: 100%; margin: 0; }
    ========================================================================== */
 
 /* Система только светлая: компоненты и корневой layout задают light явно,
-   native-части controls (checkbox, список select, color picker, scrollbar)
+   native-части controls (список select, color picker, scrollbar)
    остаются светлыми. */
 .app,
 .button,
@@ -100,7 +114,6 @@ html, body { height: 100%; margin: 0; }
 .select,
 .range,
 .color-control,
-.checkbox,
 .section-toggle,
 .tooltip,
 .inline-message {
@@ -166,21 +179,10 @@ html, body { height: 100%; margin: 0; }
     color: var(--color-on-accent);
 }
 
-.button--primary:hover {
-    border-color: var(--color-accent-hover);
-    background-color: var(--color-accent-hover);
-}
-
 .button--secondary {
     border-color: var(--color-border);
     background-color: var(--color-control-bg);
 }
-
-.button--secondary:hover { border-color: var(--color-border); background-color: var(--color-control-hover); }
-.button--secondary:active { background-color: var(--color-control-active); }
-
-.button--ghost:hover { border-color: transparent; background-color: var(--color-control-hover); }
-.button--ghost:active { background-color: var(--color-control-active); }
 
 /* ---------- Icon button ---------- */
 
@@ -191,21 +193,31 @@ html, body { height: 100%; margin: 0; }
     background-color: var(--color-control-bg);
 }
 
-.icon-button:hover { border-color: var(--color-border); background-color: var(--color-control-hover); }
-.icon-button:active { background-color: var(--color-control-active); }
-
 .icon-button--small {
     width: var(--control-height-small);
     height: var(--control-height-small);
 }
 
-/* ---------- Selected state (toggle, pipette, lock, anchor) ---------- */
+/* ---------- Anchor cell ---------- */
 
-.button[aria-pressed="true"],
-.icon-button[aria-pressed="true"] {
-    border-color: var(--color-accent);
-    background-color: var(--color-accent-soft);
-    color: var(--color-accent);
+/* Ячейка .anchor-picker: без рамки и radius — линии сетки рисует контейнер */
+.anchor-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--control-height-small);
+    height: var(--control-height-small);
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background-color: var(--color-control-bg);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition:
+        background-color var(--transition-fast),
+        color var(--transition-fast),
+        box-shadow var(--transition-fast);
 }
 
 /* ---------- Input ---------- */
@@ -231,9 +243,6 @@ html, body { height: 100%; margin: 0; }
     padding: 0 var(--space-2);
 }
 
-.input:hover,
-.select:hover { border-color: var(--color-border-strong); }
-
 .input--number {
     width: var(--input-number-width);
     text-align: right;
@@ -249,8 +258,6 @@ html, body { height: 100%; margin: 0; }
 }
 
 .input--narrow { width: var(--input-narrow-width); }
-
-.input[aria-invalid="true"] { border-color: var(--color-error); }
 
 /* ---------- Select ---------- */
 
@@ -324,10 +331,6 @@ html, body { height: 100%; margin: 0; }
     transition: box-shadow var(--transition-fast);
 }
 
-.range:focus-visible { outline: none; }
-.range:focus-visible::-webkit-slider-thumb { box-shadow: var(--focus-ring); }
-.range:focus-visible::-moz-range-thumb { box-shadow: var(--focus-ring); }
-
 /* ---------- Color control ---------- */
 
 /* Native input растянут прозрачным слоем поверх control: клик открывает picker.
@@ -352,8 +355,6 @@ html, body { height: 100%; margin: 0; }
         box-shadow var(--transition-fast);
 }
 
-.color-control:hover { border-color: var(--color-border-strong); }
-
 .color-control input[type="color"] {
     position: absolute;
     inset: 0;
@@ -372,6 +373,7 @@ html, body { height: 100%; margin: 0; }
     height: var(--icon-size);
     border: var(--border-width) solid var(--color-border-strong);
     border-radius: var(--radius-sm);
+    background-color: var(--swatch-color, transparent); /* syncColorControl() */
 }
 
 .color-value {
@@ -381,62 +383,41 @@ html, body { height: 100%; margin: 0; }
     white-space: nowrap;
 }
 
-/* ---------- Checkbox ---------- */
+/* ---------- Section toggle ---------- */
 
-.checkbox {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    color: var(--color-text);
-    font-size: var(--font-size-md);
-    cursor: pointer;
-}
-
-.checkbox input {
+/* Switch On/Off: native checkbox (role="switch"). Track — фон, knob — radial-gradient,
+   сдвиг через background-position. Knob 12px в квадрате 16 × 16.
+   Прозрачная рамка — для общего focus (border-color); фон считается от border-box,
+   поэтому геометрия knob от рамки не зависит. */
+.section-toggle {
+    --toggle-width: var(--control-height-small);
+    --toggle-height: var(--space-4);
     flex: none;
-    width: 14px;
-    height: 14px;
+    width: var(--toggle-width);
+    height: var(--toggle-height);
     margin: 0;
-    accent-color: var(--color-accent);
+    border: var(--border-width) solid transparent;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-border-strong);
+    background-image: radial-gradient(circle,
+        var(--color-control-bg) 5.5px, transparent 6px);
+    background-origin: border-box;
+    background-size: var(--toggle-height) var(--toggle-height);
+    background-repeat: no-repeat;
+    background-position: left center;
+    appearance: none;
+    -webkit-appearance: none;
     cursor: pointer;
+    transition:
+        background-color var(--transition-fast),
+        background-position var(--transition-fast),
+        border-color var(--transition-fast),
+        box-shadow var(--transition-fast);
 }
 
-.checkbox input:focus-visible {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 2px;
-}
-
-/* ---------- Focus ---------- */
-
-.button:focus-visible,
-.icon-button:focus-visible,
-.input:focus-visible,
-.select:focus-visible,
-.section-toggle:focus-visible,
-.color-control:has(input:focus-visible) {
-    outline: none;
-    border-color: var(--color-accent);
-    box-shadow: var(--focus-ring);
-}
-
-/* ---------- Disabled ---------- */
-
-.button:disabled,
-.icon-button:disabled,
-.input:disabled,
-.select:disabled,
-.range:disabled,
-.section-toggle:disabled,
-.checkbox input:disabled,
-.color-control:has(input:disabled) {
-    opacity: var(--disabled-opacity);
-    cursor: default;
-    pointer-events: none;
-}
-
-.checkbox:has(input:disabled) {
-    color: var(--color-text-muted);
-    cursor: default;
+.section-toggle:checked {
+    background-color: var(--color-accent);
+    background-position: right center;
 }
 
 /* ---------- Section heading ---------- */
@@ -448,48 +429,6 @@ html, body { height: 100%; margin: 0; }
     font-weight: var(--font-weight-semibold);
     letter-spacing: 0.06em;
     text-transform: uppercase;
-}
-
-/* ---------- Section header & toggle ---------- */
-
-/* Заголовок секции + switch опционального этапа pipeline (Background, Crop) */
-.section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2);
-}
-
-/* Switch On/Off: native checkbox (role="switch"). Knob — radial-gradient
-   в background-image, сдвиг через background-position (без ::before на input).
-   Knob 12px в квадрате 16 × 16: отступ 2px с каждой стороны. */
-.section-toggle {
-    --toggle-width: var(--control-height-small);
-    --toggle-height: var(--space-4);
-    flex: none;
-    width: var(--toggle-width);
-    height: var(--toggle-height);
-    margin: 0;
-    border: 0;
-    border-radius: var(--radius-lg);
-    background-color: var(--color-border-strong);
-    background-image: radial-gradient(circle,
-        var(--color-control-bg) 5.5px, transparent 6px);
-    background-size: var(--toggle-height) var(--toggle-height);
-    background-repeat: no-repeat;
-    background-position: left center;
-    appearance: none;
-    -webkit-appearance: none;
-    cursor: pointer;
-    transition:
-        background-color var(--transition-fast),
-        background-position var(--transition-fast),
-        box-shadow var(--transition-fast);
-}
-
-.section-toggle:checked {
-    background-color: var(--color-accent);
-    background-position: right center;
 }
 
 /* ---------- Divider ---------- */
@@ -566,21 +505,115 @@ html, body { height: 100%; margin: 0; }
     pointer-events: none;
 }
 
+/* ---------- States ---------- */
+
+/* Все интерактивные состояния controls — только здесь.
+   Порядок важен (специфичность одинаковая):
+   hover → active → invalid → focus → selected → disabled. */
+
+/* Hover */
+.button--primary:hover,
+.button--primary:active {
+    border-color: var(--color-accent-hover);
+    background-color: var(--color-accent-hover);
+}
+
+.button--secondary:hover,
+.button--ghost:hover,
+.icon-button:hover,
+.anchor-cell:hover { background-color: var(--color-control-hover); }
+
+.input:hover,
+.select:hover,
+.color-control:hover { border-color: var(--color-border-strong); }
+
+/* Active */
+.button--secondary:active,
+.button--ghost:active,
+.icon-button:active,
+.anchor-cell:active { background-color: var(--color-control-active); }
+
+/* Invalid */
+.input[aria-invalid="true"] { border-color: var(--color-error); }
+
+/* Focus — только :focus-visible: accent-рамка + мягкое кольцо */
+.button:focus-visible,
+.icon-button:focus-visible,
+.input:focus-visible,
+.select:focus-visible,
+.section-toggle:focus-visible,
+.app-preview-empty-action:focus-visible,
+.color-control:has(input:focus-visible) {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: var(--focus-ring);
+}
+
+/* Ячейки обрезаны overflow контейнера — то же кольцо внутрь */
+.anchor-cell:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring-inset);
+}
+
+/* Slider: кольцо на thumb (рамка thumb уже accent) */
+.range:focus-visible { outline: none; }
+.range:focus-visible::-webkit-slider-thumb { box-shadow: var(--focus-ring); }
+.range:focus-visible::-moz-range-thumb { box-shadow: var(--focus-ring); }
+
+/* Selected — toggle-like controls: Pick, lock, anchor */
+.button[aria-pressed="true"],
+.icon-button[aria-pressed="true"],
+.anchor-cell[aria-pressed="true"] {
+    border-color: var(--color-accent);
+    background-color: var(--color-accent-soft);
+    color: var(--color-accent);
+}
+
+/* У ячейки anchor нет рамки (сетку рисует контейнер) — accent-рамка внутрь */
+.anchor-cell[aria-pressed="true"] { box-shadow: var(--selected-ring-inset); }
+
+/* Выбранная ячейка в фокусе: focus-кольцо уже включает 1px accent-рамку */
+.anchor-cell[aria-pressed="true"]:focus-visible { box-shadow: var(--focus-ring-inset); }
+
+/* Disabled — атрибут disabled. Anchor гасится целиком вместе с линиями сетки. */
+.button:disabled,
+.icon-button:disabled,
+.input:disabled,
+.select:disabled,
+.range:disabled,
+.section-toggle:disabled,
+.color-control:has(input:disabled),
+.anchor-picker:has(.anchor-cell:disabled) {
+    opacity: var(--disabled-opacity);
+    cursor: default;
+    pointer-events: none;
+}
+
+/* Controls с рамкой и фоном: нейтральные рамка и фон, muted text */
+.button--primary:disabled,
+.button--secondary:disabled,
+.icon-button:disabled,
+.input:disabled,
+.select:disabled,
+.color-control:has(input:disabled) {
+    border-color: var(--color-border);
+    background-color: var(--color-control-bg);
+    color: var(--color-text-muted);
+}
+
+.button--ghost:disabled { color: var(--color-text-muted); }
+
 /* ==========================================================================
    Design system — layouts
    ========================================================================== */
 
-/* Корневой grid: toolbar / workspace / bottom bar. Ставится на <body>.
-   Занимает ровно окно; страница не прокручивается — скроллятся только
-   preview и sidebar. Колонка minmax(0, 1fr): min-content toolbar
+/* Корневой grid: toolbar / workspace / bottom bar. Ставится на <body>,
+   высота — 100% от html. Колонка minmax(0, 1fr): min-content toolbar
    не растягивает layout шире окна. */
 .app {
     display: grid;
     grid-template-rows: var(--toolbar-height) minmax(0, 1fr) var(--bottom-bar-height);
     grid-template-columns: minmax(0, 1fr);
-    width: 100vw;
-    height: 100vh;
-    overflow: hidden;
     background-color: var(--color-app-bg);
     color: var(--color-text);
     font-family: var(--font-ui);
@@ -693,10 +726,10 @@ html, body { height: 100%; margin: 0; }
     font-weight: var(--font-weight-medium);
 }
 
-/* «choose a file» — текстовая action-ссылка */
+/* «choose a file» — текстовая action-ссылка; прозрачная рамка — для общего focus */
 .app-preview-empty-action {
     padding: 0;
-    border: 0;
+    border: var(--border-width) solid transparent;
     border-radius: var(--radius-sm);
     background: none;
     color: var(--color-text);
@@ -704,11 +737,6 @@ html, body { height: 100%; margin: 0; }
     text-decoration: underline;
     text-underline-offset: 2px;
     cursor: pointer;
-}
-
-.app-preview-empty-action:focus-visible {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 2px;
 }
 
 /* pointer-events: none — drag-события идут к preview-area как раньше */
@@ -763,6 +791,18 @@ html, body { height: 100%; margin: 0; }
     color: var(--color-text-muted);
 }
 
+/* ---------- Section header ---------- */
+
+/* Одинаковый у всех секций: заголовок + опциональный switch (Background, Crop).
+   min-height = высота .section-toggle — заголовки стоят на одной высоте. */
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    min-height: var(--space-4);
+}
+
 /* ---------- Control rows ---------- */
 
 /* Label + control */
@@ -810,8 +850,10 @@ html, body { height: 100%; margin: 0; }
 .value-separator,
 .unit { color: var(--color-text-secondary); }
 
+/* ---------- Anchor picker ---------- */
+
 /* 3 × 3 anchors: единая сетка — линии = фон контейнера в зазорах 1px между ячейками.
-   Radius только у внешнего контейнера, ячейки без radius. */
+   Radius только у внешнего контейнера. */
 .anchor-picker {
     display: grid;
     grid-template-columns: repeat(3, var(--control-height-small));
@@ -822,40 +864,6 @@ html, body { height: 100%; margin: 0; }
     background-color: var(--color-border);
     overflow: hidden;
 }
-
-.anchor-cell {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: var(--control-height-small);
-    height: var(--control-height-small);
-    margin: 0;
-    padding: 0;
-    border: 0;
-    border-radius: 0;
-    background-color: var(--color-control-bg);
-    color: var(--color-text-muted);
-    cursor: pointer;
-    transition:
-        background-color var(--transition-fast),
-        color var(--transition-fast);
-}
-
-.anchor-cell:hover { background-color: var(--color-control-hover); }
-
-.anchor-cell[aria-pressed="true"] {
-    background-color: var(--color-accent-soft);
-    color: var(--color-accent);
-}
-
-/* Внутренняя рамка: внешний box-shadow обрезался бы overflow контейнера */
-.anchor-cell:focus-visible {
-    outline: none;
-    box-shadow: inset 0 0 0 var(--border-width) var(--color-accent);
-}
-
-.anchor-cell:disabled { cursor: default; pointer-events: none; }
-.anchor-picker:has(.anchor-cell:disabled) { opacity: var(--disabled-opacity); }
 
 /* ---------- Bottom bar ---------- */
 
@@ -877,14 +885,14 @@ html, body { height: 100%; margin: 0; }
 }
 
 .bottom-bar-file {
-    max-width: 240px;
+    max-width: var(--bottom-bar-file-width);
     overflow: hidden;
     color: var(--color-text-muted);
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.bottom-bar-size:empty,
+/* #result-size всегда с текстом («No image» или размер) */
 .bottom-bar-file:empty { display: none; }
 
 .bottom-bar-status {
