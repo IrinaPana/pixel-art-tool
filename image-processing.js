@@ -147,8 +147,127 @@ const ImageProcessing = (function () {
         }
     }
 
+    // Индекс исходного пикселя для центра выходного пикселя d при масштабировании
+    // srcSize → dstSize. Общий для Nearest и для пипетки.
+    function nearestSourceIndex(d, srcSize, dstSize) {
+        return Math.min(srcSize - 1, Math.floor((d + 0.5) * srcSize / dstSize));
+    }
+
+    // Алгоритм шага Resize: Area — только если ни одна сторона не увеличивается.
+    // При любом увеличении весь шаг выполняется через Nearest.
+    // Совпадение размеров обрабатывается в applyResize() до выбора алгоритма.
+    function getResizeMethod(srcWidth, srcHeight, options) {
+        const isUpscale = options.width > srcWidth || options.height > srcHeight;
+        return options.method === 'area' && !isUpscale ? 'area' : 'nearest';
+    }
+
+    // Nearest: копирование RGBA целиком (32-битное слово), без смешивания.
+    function resizeNearest(image, width, height) {
+        const srcWidth = image.width;
+        const srcHeight = image.height;
+        const result = new ImageData(width, height);
+        const src = new Uint32Array(image.data.buffer, image.data.byteOffset, srcWidth * srcHeight);
+        const dst = new Uint32Array(result.data.buffer, result.data.byteOffset, width * height);
+
+        const srcXs = new Int32Array(width);
+        for (let x = 0; x < width; x++) srcXs[x] = nearestSourceIndex(x, srcWidth, width);
+
+        for (let y = 0; y < height; y++) {
+            const srcRow = nearestSourceIndex(y, srcHeight, height) * srcWidth;
+            const dstRow = y * width;
+            for (let x = 0; x < width; x++) dst[dstRow + x] = src[srcRow + srcXs[x]];
+        }
+        return result;
+    }
+
+    // Для каждого выходного индекса по оси: первый исходный индекс и веса —
+    // длины пересечения исходных пикселей с областью [d·scale, (d+1)·scale).
+    // Дробные границы учитываются, поэтому коэффициент может быть нецелым.
+    function getAreaSpans(srcSize, dstSize) {
+        const scale = srcSize / dstSize;
+        const spans = [];
+        for (let d = 0; d < dstSize; d++) {
+            const start = d * scale;
+            const end = Math.min(srcSize, (d + 1) * scale);
+            const first = Math.floor(start);
+            const last = Math.min(srcSize, Math.ceil(end));
+            const weights = [];
+            for (let s = first; s < last; s++) {
+                weights.push(Math.min(end, s + 1) - Math.max(start, s));
+            }
+            spans.push({ first: first, weights: weights });
+        }
+        return spans;
+    }
+
+    // Area averaging с учётом alpha (a = alpha / 255):
+    //   resultAlpha   = Σ(w·a) / Σw
+    //   resultChannel = Σ(w·a·c) / Σ(w·a)
+    // RGB полностью прозрачных пикселей не влияет на результат.
+    // Округление только при записи; alpha → 0 даёт прозрачный чёрный.
+    function resizeArea(image, width, height) {
+        const src = image.data;
+        const srcWidth = image.width;
+        const result = new ImageData(width, height); // заполнен прозрачным чёрным
+        const dst = result.data;
+        const spansX = getAreaSpans(image.width, width);
+        const spansY = getAreaSpans(image.height, height);
+
+        for (let y = 0; y < height; y++) {
+            const spanY = spansY[y];
+            for (let x = 0; x < width; x++) {
+                const spanX = spansX[x];
+                let weightSum = 0;
+                let alphaSum = 0;
+                let rSum = 0;
+                let gSum = 0;
+                let bSum = 0;
+
+                for (let j = 0; j < spanY.weights.length; j++) {
+                    const row = (spanY.first + j) * srcWidth;
+                    const weightY = spanY.weights[j];
+                    for (let k = 0; k < spanX.weights.length; k++) {
+                        const weight = weightY * spanX.weights[k];
+                        const i = (row + spanX.first + k) * 4;
+                        const weightedAlpha = weight * src[i + 3] / 255;
+                        weightSum += weight;
+                        alphaSum += weightedAlpha;
+                        rSum += weightedAlpha * src[i];
+                        gSum += weightedAlpha * src[i + 1];
+                        bSum += weightedAlpha * src[i + 2];
+                    }
+                }
+
+                const alpha = Math.round(alphaSum / weightSum * 255);
+                if (alpha === 0) continue;
+
+                const o = (y * width + x) * 4;
+                dst[o] = Math.round(rSum / alphaSum);
+                dst[o + 1] = Math.round(gSum / alphaSum);
+                dst[o + 2] = Math.round(bSum / alphaSum);
+                dst[o + 3] = alpha;
+            }
+        }
+        return result;
+    }
+
     function applyResize(image, options) {
-        return image;
+        const width = options.width;
+        const height = options.height;
+        if (width === image.width && height === image.height) return image;
+
+        return getResizeMethod(image.width, image.height, options) === 'area'
+            ? resizeArea(image, width, height)
+            : resizeNearest(image, width, height);
+    }
+
+    // Точка результата Resize (dstWidth × dstHeight) → точка изображения до Resize:
+    // исходный пиксель в центре соответствующей области.
+    function inverseResizePoint(x, y, srcWidth, srcHeight, dstWidth, dstHeight) {
+        return {
+            x: nearestSourceIndex(x, srcWidth, dstWidth),
+            y: nearestSourceIndex(y, srcHeight, dstHeight)
+        };
     }
 
     function applyCrop(image, options) {
@@ -171,7 +290,10 @@ const ImageProcessing = (function () {
 
     return {
         cloneImageData,
+        getTransformedSize,
+        getResizeMethod,
         inverseTransformPoint,
+        inverseResizePoint,
         process
     };
 })();
