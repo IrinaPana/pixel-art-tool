@@ -792,24 +792,31 @@ html, body { height: 100%; margin: 0; }
     min-height: 0;
 }
 
+/* Сам не скроллится: scroll — у .app-preview-scroll, слои empty/drop
+   лежат поверх и не прокручиваются вместе с изображением. */
 .app-preview {
     position: relative;
-    display: flex;
     flex: 1 1 auto;
-    overflow: auto;
     min-width: 0;
     min-height: 0;
     background-color: var(--color-workspace-bg);
 }
 
-.app-preview.is-dragging {
-    outline: 2px dashed var(--color-accent);
-    outline-offset: calc(var(--space-2) * -1);
+.app-preview-scroll {
+    position: absolute;
+    inset: 0;
+    overflow: auto;
 }
 
-/* margin: auto центрирует и не обрезает при переполнении (скролл) */
+/* Не меньше viewport — центрирует маленькое изображение;
+   max-content — большое расширяет stage, и появляется scroll без обрезки. */
 .app-preview-stage {
-    margin: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: max-content;
+    min-width: 100%;
+    min-height: 100%;
     padding: var(--space-5);
 }
 
@@ -828,16 +835,60 @@ html, body { height: 100%; margin: 0; }
     background-size: 16px 16px; /* клетка 8 × 8 px */
 }
 
-.app-preview-empty {
-    margin: auto;
-    color: var(--color-text-secondary);
-}
-
 .app-preview-canvas.is-picking { cursor: crosshair; }
 
-/* has-image ставит render() в app.js */
-.app-preview:not(.has-image) .app-preview-stage { display: none; }
-.app-preview.has-image .app-preview-empty { display: none; }
+/* Слои поверх preview: empty state и drag state */
+.app-preview-empty,
+.app-preview-drop {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-1);
+    text-align: center;
+}
+
+.app-preview-empty { color: var(--color-text-secondary); }
+.app-preview-empty p { margin: 0; }
+
+.app-preview-empty-title {
+    color: var(--color-text);
+    font-weight: var(--font-weight-medium);
+}
+
+/* «choose a file» — текстовая action-ссылка */
+.app-preview-empty-action {
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--color-text);
+    font: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+
+.app-preview-empty-action:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+}
+
+/* pointer-events: none — drag-события идут к preview-area как раньше */
+.app-preview-drop {
+    border: var(--border-width) solid var(--color-accent);
+    background-color: var(--color-accent-soft);
+    color: var(--color-text);
+    font-weight: var(--font-weight-medium);
+    pointer-events: none;
+}
+
+/* has-image и is-dragging ставит app.js */
+.app-preview:not(.has-image) .app-preview-scroll,
+.app-preview.has-image .app-preview-empty,
+.app-preview:not(.is-dragging) .app-preview-drop { display: none; }
 
 /* ---------- Sidebar ---------- */
 
@@ -977,9 +1028,10 @@ html, body { height: 100%; margin: 0; }
     margin-left: auto;
 }
 
+/* Значение zoom — .select: клик открывает список уровней.
+   Ширина по содержимому, высота как у icon-button--small. */
 .zoom-value {
-    min-width: 40px;
-    color: var(--color-text);
-    text-align: center;
+    width: auto;
+    height: var(--control-height-small);
     font-variant-numeric: tabular-nums;
 }

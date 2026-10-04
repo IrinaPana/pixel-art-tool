@@ -13,6 +13,7 @@ const RESIZE_LIMIT_ERROR = `Resize is limited to ${MAX_RESIZE_SIDE} px per side.
 const RESIZE_RATIO_LIMIT_ERROR = `Preserving the ratio would exceed ${MAX_RESIZE_SIDE} px per side.`;
 const CROP_MARGIN_ERROR = 'Enter a whole number, 0 or greater.';
 const CROP_EMPTY_NOTE = 'No visible content — Crop is not applied.';
+const ZOOM_LEVELS = [1, 2, 4, 8]; // масштаб preview; на обработку и экспорт не влияет
 
 const state = {
     originalImage: null, // ImageData; никогда не изменяется
@@ -25,7 +26,7 @@ const state = {
     cropResult: null,    // геометрия Crop из process(); обновляется вместе с resultImage
     // Текст полей Crop (UI-состояние), по образцу resizeDraft; применяется через commitCropDraft().
     cropDraft: { margin: '', width: '', height: '' },
-    zoom: 1,
+    zoom: 1,             // масштаб preview (ZOOM_LEVELS); не настройка обработки
     isPicking: false,    // режим пипетки; UI-состояние, не настройка обработки
     previewFailed: false // canvas не соответствует результату; экспорт и пипетка отключены
 };
@@ -35,15 +36,19 @@ let dragDepth = 0;
 
 const els = {
     openButton: document.getElementById('open-button'),
+    chooseFileButton: document.getElementById('choose-file-button'),
     exportButton: document.getElementById('export-button'),
     resetButton: document.getElementById('reset-button'),
     fileInput: document.getElementById('file-input'),
     previewArea: document.getElementById('preview-area'),
     canvas: document.getElementById('preview-canvas'),
-    zoomButtons: document.querySelectorAll('[data-zoom]'),
     fileNameValue: document.getElementById('file-name-value'),
     sizeValue: document.getElementById('size-value'),
     status: document.getElementById('status'),
+    resultSize: document.getElementById('result-size'),
+    zoomOutButton: document.getElementById('zoom-out-button'),
+    zoomInButton: document.getElementById('zoom-in-button'),
+    zoomSelect: document.getElementById('zoom-select'),
     bgEnabled: document.getElementById('bg-enabled'),
     bgOptions: document.getElementById('bg-options'),
     bgColor: document.getElementById('bg-color'),
@@ -195,10 +200,11 @@ function render() {
 
         els.previewArea.classList.toggle('has-image', hasImage);
         els.resetButton.disabled = !hasImage;
-        els.zoomButtons.forEach((button) => {
-            button.disabled = !hasImage;
-            button.setAttribute('aria-pressed', String(Number(button.dataset.zoom) === state.zoom));
-        });
+        const zoomIndex = ZOOM_LEVELS.indexOf(state.zoom);
+        els.zoomSelect.disabled = !hasImage;
+        els.zoomSelect.value = String(state.zoom);
+        els.zoomOutButton.disabled = !hasImage || zoomIndex <= 0;
+        els.zoomInButton.disabled = !hasImage || zoomIndex >= ZOOM_LEVELS.length - 1;
         els.transformButtons.forEach((button) => {
             button.disabled = !hasImage;
         });
@@ -209,6 +215,7 @@ function render() {
         if (!hasImage) {
             els.fileNameValue.textContent = '—';
             els.sizeValue.textContent = '—';
+            els.resultSize.textContent = 'No image';
             return;
         }
 
@@ -219,6 +226,7 @@ function render() {
 
         els.fileNameValue.textContent = state.fileName;
         els.sizeValue.textContent = `${result.width} × ${result.height} px`;
+        els.resultSize.textContent = `${result.width} × ${result.height} px`;
     } finally {
         renderPreviewControls();
     }
@@ -745,15 +753,31 @@ function getExportFileName(name) {
     return `${base}-edited.png`;
 }
 
+// Сбрасывает настройки обработки; изображение и zoom сохраняются.
 function reset() {
     if (!state.originalImage) return;
     state.settings = createDefaultSettings(state.originalImage.width, state.originalImage.height);
     syncResizeDraft();
     syncCropDraft();
-    state.zoom = 1;
     state.isPicking = false;
     showStatus('');
     reprocess();
+}
+
+// Zoom меняет только CSS-размер canvas (render), результат не пересчитывается.
+function setZoom(zoom) {
+    if (!state.resultImage || !ZOOM_LEVELS.includes(zoom)) return;
+    state.zoom = zoom;
+    render();
+}
+
+// Соседний уровень. Если кнопка стала disabled на крайнем уровне,
+// фокус переходит на select, чтобы не потеряться.
+function stepZoom(direction, button) {
+    const index = ZOOM_LEVELS.indexOf(state.zoom) + direction;
+    if (index < 0 || index >= ZOOM_LEVELS.length) return;
+    setZoom(ZOOM_LEVELS[index]);
+    if (button.disabled) els.zoomSelect.focus();
 }
 
 // ---------- UI components ----------
@@ -845,6 +869,7 @@ function initUiComponents() {
 // ---------- Events ----------
 
 els.openButton.addEventListener('click', () => els.fileInput.click());
+els.chooseFileButton.addEventListener('click', () => els.fileInput.click());
 
 els.fileInput.addEventListener('change', () => {
     const file = els.fileInput.files[0];
@@ -855,12 +880,9 @@ els.fileInput.addEventListener('change', () => {
 els.exportButton.addEventListener('click', exportPng);
 els.resetButton.addEventListener('click', reset);
 
-els.zoomButtons.forEach((button) => {
-    button.addEventListener('click', () => {
-        state.zoom = Number(button.dataset.zoom);
-        render();
-    });
-});
+els.zoomOutButton.addEventListener('click', () => stepZoom(-1, els.zoomOutButton));
+els.zoomInButton.addEventListener('click', () => stepZoom(1, els.zoomInButton));
+els.zoomSelect.addEventListener('change', () => setZoom(Number(els.zoomSelect.value)));
 
 els.bgEnabled.addEventListener('change', () => {
     if (!els.bgEnabled.checked) {
@@ -944,6 +966,12 @@ els.previewArea.addEventListener('dragenter', (event) => {
     event.preventDefault();
     dragDepth++;
     els.previewArea.classList.add('is-dragging');
+});
+
+// Курсор «копирование» над drop-зоной.
+els.previewArea.addEventListener('dragover', (event) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
 });
 
 els.previewArea.addEventListener('dragleave', () => {
