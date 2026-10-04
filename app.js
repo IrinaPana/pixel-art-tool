@@ -42,7 +42,6 @@ const els = {
     fileInput: document.getElementById('file-input'),
     previewArea: document.getElementById('preview-area'),
     canvas: document.getElementById('preview-canvas'),
-    fileName: document.getElementById('file-name'),
     status: document.getElementById('status'),
     resultSize: document.getElementById('result-size'),
     zoomOutButton: document.getElementById('zoom-out-button'),
@@ -206,7 +205,6 @@ function render() {
         renderCropControls(hasImage);
 
         if (!hasImage) {
-            els.fileName.textContent = '';
             els.resultSize.textContent = 'No image';
             return;
         }
@@ -216,8 +214,6 @@ function render() {
         els.canvas.style.width = result.width * state.zoom + 'px';
         els.canvas.style.height = result.height * state.zoom + 'px';
 
-        els.fileName.textContent = state.fileName;
-        els.fileName.title = state.fileName; // полное имя при обрезке ellipsis
         els.resultSize.textContent = `${result.width} × ${result.height} px`;
     } finally {
         renderPreviewControls();
@@ -426,7 +422,6 @@ async function loadFile(file) {
     }
 
     const requestId = ++loadRequestId;
-    showStatus('Loading…');
 
     let imageData;
     try {
