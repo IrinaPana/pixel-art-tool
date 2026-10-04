@@ -13,6 +13,7 @@ const RESIZE_LIMIT_ERROR = `Resize is limited to ${MAX_RESIZE_SIDE} px per side.
 const RESIZE_RATIO_LIMIT_ERROR = `Preserving the ratio would exceed ${MAX_RESIZE_SIDE} px per side.`;
 const CROP_MARGIN_ERROR = 'Enter a whole number, 0 or greater.';
 const CROP_EMPTY_NOTE = 'No visible content — Crop is not applied.';
+const ZOOM_LEVELS = [1, 2, 4, 8]; // масштаб preview; на обработку и экспорт не влияет
 
 const state = {
     originalImage: null, // ImageData; никогда не изменяется
@@ -25,7 +26,7 @@ const state = {
     cropResult: null,    // геометрия Crop из process(); обновляется вместе с resultImage
     // Текст полей Crop (UI-состояние), по образцу resizeDraft; применяется через commitCropDraft().
     cropDraft: { margin: '', width: '', height: '' },
-    zoom: 1,
+    zoom: 1,             // масштаб preview (ZOOM_LEVELS); не настройка обработки
     isPicking: false,    // режим пипетки; UI-состояние, не настройка обработки
     previewFailed: false // canvas не соответствует результату; экспорт и пипетка отключены
 };
@@ -35,42 +36,46 @@ let dragDepth = 0;
 
 const els = {
     openButton: document.getElementById('open-button'),
+    chooseFileButton: document.getElementById('choose-file-button'),
     exportButton: document.getElementById('export-button'),
     resetButton: document.getElementById('reset-button'),
     fileInput: document.getElementById('file-input'),
     previewArea: document.getElementById('preview-area'),
     canvas: document.getElementById('preview-canvas'),
-    zoomButtons: document.querySelectorAll('[data-zoom]'),
-    fileNameValue: document.getElementById('file-name-value'),
-    sizeValue: document.getElementById('size-value'),
+    fileName: document.getElementById('file-name'),
     status: document.getElementById('status'),
+    resultSize: document.getElementById('result-size'),
+    zoomOutButton: document.getElementById('zoom-out-button'),
+    zoomInButton: document.getElementById('zoom-in-button'),
+    zoomSelect: document.getElementById('zoom-select'),
     bgEnabled: document.getElementById('bg-enabled'),
     bgOptions: document.getElementById('bg-options'),
     bgColor: document.getElementById('bg-color'),
-    bgColorValue: document.getElementById('bg-color-value'),
     bgPickButton: document.getElementById('bg-pick-button'),
     bgTolerance: document.getElementById('bg-tolerance'),
     bgToleranceValue: document.getElementById('bg-tolerance-value'),
-    bgModeInputs: document.querySelectorAll('input[name="bg-mode"]'),
-    transformButtons: document.querySelectorAll('[data-transform]'),
+    bgMode: document.getElementById('bg-mode'),
+    transformOptions: document.getElementById('transform-options'),
+    transformButtons: document.querySelectorAll('[data-transform]'), // только для подписки на click
     resizeOptions: document.getElementById('resize-options'),
-    resizeMethodButtons: document.querySelectorAll('[data-resize-method]'),
+    resizeMethod: document.getElementById('resize-method'),
     resizeNote: document.getElementById('resize-note'),
     resizeWidth: document.getElementById('resize-width'),
     resizeHeight: document.getElementById('resize-height'),
     resizeError: document.getElementById('resize-error'),
-    resizeKeepRatio: document.getElementById('resize-keep-ratio'),
+    resizeLockButton: document.getElementById('resize-lock-button'),
+    resizeLockIcon: document.querySelector('#resize-lock-button use'),
     cropEnabled: document.getElementById('crop-enabled'),
     cropOptions: document.getElementById('crop-options'),
-    cropModeInputs: document.querySelectorAll('input[name="crop-mode"]'),
-    cropMarginField: document.getElementById('crop-margin-field'),
+    cropMode: document.getElementById('crop-mode'),
+    cropModeBlocks: document.querySelectorAll('[data-crop-mode]'),
     cropMargin: document.getElementById('crop-margin'),
-    cropFixedFields: document.getElementById('crop-fixed-fields'),
     cropWidth: document.getElementById('crop-width'),
     cropHeight: document.getElementById('crop-height'),
     cropAnchorButtons: document.querySelectorAll('[data-anchor]'),
     cropNote: document.getElementById('crop-note'),
-    cropError: document.getElementById('crop-error')
+    cropError: document.getElementById('crop-error'),
+    cropWarning: document.getElementById('crop-warning')
 };
 
 const previewContext = els.canvas.getContext('2d');
@@ -194,21 +199,15 @@ function render() {
         const hasImage = result !== null;
 
         els.previewArea.classList.toggle('has-image', hasImage);
-        els.resetButton.disabled = !hasImage;
-        els.zoomButtons.forEach((button) => {
-            button.disabled = !hasImage;
-            button.setAttribute('aria-pressed', String(Number(button.dataset.zoom) === state.zoom));
-        });
-        els.transformButtons.forEach((button) => {
-            button.disabled = !hasImage;
-        });
+        els.transformOptions.disabled = !hasImage;
+        renderZoomControls(hasImage);
         renderBackgroundControls(hasImage);
         renderResizeControls(hasImage);
         renderCropControls(hasImage);
 
         if (!hasImage) {
-            els.fileNameValue.textContent = '—';
-            els.sizeValue.textContent = '—';
+            els.fileName.textContent = '';
+            els.resultSize.textContent = 'No image';
             return;
         }
 
@@ -217,11 +216,21 @@ function render() {
         els.canvas.style.width = result.width * state.zoom + 'px';
         els.canvas.style.height = result.height * state.zoom + 'px';
 
-        els.fileNameValue.textContent = state.fileName;
-        els.sizeValue.textContent = `${result.width} × ${result.height} px`;
+        els.fileName.textContent = state.fileName;
+        els.fileName.title = state.fileName; // полное имя при обрезке ellipsis
+        els.resultSize.textContent = `${result.width} × ${result.height} px`;
     } finally {
         renderPreviewControls();
     }
+}
+
+// Zoom — состояние просмотра (state.zoom), а не настройка обработки.
+function renderZoomControls(hasImage) {
+    const zoomIndex = ZOOM_LEVELS.indexOf(state.zoom);
+    els.zoomSelect.disabled = !hasImage;
+    els.zoomSelect.value = String(state.zoom);
+    els.zoomOutButton.disabled = !hasImage || zoomIndex <= 0;
+    els.zoomInButton.disabled = !hasImage || zoomIndex >= ZOOM_LEVELS.length - 1;
 }
 
 // Контролы, зависящие от исправности preview: экспорт читает canvas,
@@ -231,28 +240,34 @@ function renderPreviewControls() {
     const isPreviewReady = state.resultImage !== null && !state.previewFailed;
     if (!isPreviewReady) state.isPicking = false;
 
-    els.exportButton.disabled = !isPreviewReady || hasCropConflict();
+    renderToolbarControls(isPreviewReady);
     els.bgPickButton.disabled = !isPreviewReady || !state.settings.background.enabled;
     els.bgPickButton.setAttribute('aria-pressed', String(state.isPicking));
     els.canvas.classList.toggle('is-picking', state.isPicking);
 }
 
-// Контролы Background отражают state.settings.background;
-// состояние пипетки — в renderPreviewControls().
+// Reset — при загруженном изображении; Export — при исправном preview без конфликта Crop.
+function renderToolbarControls(isPreviewReady) {
+    els.resetButton.disabled = state.resultImage === null;
+    els.exportButton.disabled = !isPreviewReady || hasCropConflict();
+}
+
+// Контролы Background отражают state.settings.background; выключенный этап —
+// настройки скрыты, значения сохраняются. Состояние пипетки — в renderPreviewControls().
 function renderBackgroundControls(hasImage) {
     const background = state.settings.background;
 
     els.bgEnabled.disabled = !hasImage;
     els.bgEnabled.checked = background.enabled;
-    els.bgOptions.disabled = !hasImage || !background.enabled;
+    els.bgOptions.hidden = !background.enabled;
+    els.bgOptions.disabled = !hasImage;
 
     els.bgColor.value = background.color;
-    els.bgColorValue.textContent = background.color.toUpperCase();
+    syncColorControl(els.bgColor);
+    els.bgMode.value = background.mode;
     els.bgTolerance.value = String(background.tolerance);
+    syncRangeFill(els.bgTolerance);
     els.bgToleranceValue.textContent = String(background.tolerance);
-    els.bgModeInputs.forEach((input) => {
-        input.checked = input.value === background.mode;
-    });
 }
 
 // Поля Resize показывают черновик, а не применённые настройки.
@@ -263,10 +278,9 @@ function renderResizeControls(hasImage) {
     const check = hasImage ? getResizeDraftCheck() : { widthInvalid: false, heightInvalid: false, message: '' };
 
     els.resizeOptions.disabled = !hasImage;
-    els.resizeMethodButtons.forEach((button) => {
-        button.setAttribute('aria-pressed', String(button.dataset.resizeMethod === resize.method));
-    });
-    els.resizeKeepRatio.checked = resize.preserveAspectRatio;
+    els.resizeMethod.value = resize.method;
+    els.resizeLockButton.setAttribute('aria-pressed', String(resize.preserveAspectRatio));
+    els.resizeLockIcon.setAttribute('href', resize.preserveAspectRatio ? '#icon-lock' : '#icon-unlock');
 
     renderResizeField(els.resizeWidth, state.resizeDraft.width, check.widthInvalid);
     renderResizeField(els.resizeHeight, state.resizeDraft.height, check.heightInvalid);
@@ -326,7 +340,8 @@ function hasCropConflict() {
     return crop !== null && (crop.status === 'overflow' || crop.status === 'too-large');
 }
 
-// Поля показывают черновик; сообщение = ошибка черновика + конфликт размера.
+// Поля показывают черновик. Показаны только блоки текущего режима; выключенный
+// этап — настройки скрыты, значения сохраняются. Ошибка ввода и конфликт размера — раздельно.
 function renderCropControls(hasImage) {
     const crop = state.settings.crop;
     const check = hasImage ? getCropDraftCheck()
@@ -334,12 +349,12 @@ function renderCropControls(hasImage) {
 
     els.cropEnabled.disabled = !hasImage;
     els.cropEnabled.checked = crop.enabled;
-    els.cropOptions.disabled = !hasImage || !crop.enabled;
-    els.cropModeInputs.forEach((input) => {
-        input.checked = input.value === crop.mode;
+    els.cropOptions.hidden = !crop.enabled;
+    els.cropOptions.disabled = !hasImage;
+    els.cropMode.value = crop.mode;
+    els.cropModeBlocks.forEach((block) => {
+        block.hidden = block.dataset.cropMode !== crop.mode;
     });
-    els.cropMarginField.hidden = crop.mode !== 'margin';
-    els.cropFixedFields.hidden = crop.mode !== 'fixed';
 
     renderResizeField(els.cropMargin, state.cropDraft.margin, check.marginInvalid);
     renderResizeField(els.cropWidth, state.cropDraft.width, check.widthInvalid);
@@ -348,8 +363,9 @@ function renderCropControls(hasImage) {
         button.setAttribute('aria-pressed', String(button.dataset.anchor === crop.anchor));
     });
 
-    const message = [check.message, getCropConflictMessage()].filter(Boolean).join(' ');
-    if (els.cropError.textContent !== message) els.cropError.textContent = message;
+    if (els.cropError.textContent !== check.message) els.cropError.textContent = check.message;
+    const warning = getCropConflictMessage();
+    if (els.cropWarning.textContent !== warning) els.cropWarning.textContent = warning;
     els.cropNote.textContent = state.cropResult && state.cropResult.status === 'empty' ? CROP_EMPTY_NOTE : '';
 }
 
@@ -376,19 +392,21 @@ function getCropConflictMessage() {
     const crop = state.cropResult;
     if (!crop) return '';
     if (crop.status === 'overflow') {
-        return `Content ${crop.contentWidth} × ${crop.contentHeight} px does not fit `
-            + `${crop.width} × ${crop.height} px. Preview shows the image without Crop. Increase the size.`;
+        return `Content is ${crop.contentWidth} × ${crop.contentHeight} px `
+            + `and doesn't fit into ${crop.width} × ${crop.height} px.`;
     }
     if (crop.status === 'too-large') {
         // Пределы — из обработки, по тому же правилу, что и проверка.
-        return `Crop result ${crop.width} × ${crop.height} px exceeds the allowed `
-            + `${crop.maxWidth} × ${crop.maxHeight} px. Preview shows the image without Crop.`;
+        return `Crop size ${crop.width} × ${crop.height} px exceeds the limit of `
+            + `${crop.maxWidth} × ${crop.maxHeight} px.`;
     }
     return '';
 }
 
+// Bottom bar обрезает статус ellipsis; полный текст — в title.
 function showStatus(message, isError = false) {
     els.status.textContent = message;
+    els.status.title = message;
     els.status.classList.toggle('is-error', isError);
 }
 
@@ -591,19 +609,19 @@ function onResizeSizeCommit(axis) {
     commitResizeDraft();
 }
 
-// Переключение пропорций работает от применённых размеров; при успехе
-// черновик заменяется применёнными размерами.
-function onKeepRatioChange() {
+// Lock переключает сохранение пропорций от применённых размеров; при успехе
+// черновик заменяется применёнными размерами. Если пропорции не помещаются
+// в лимит, lock остаётся выключенным, показывается ошибка.
+function toggleKeepRatio() {
     if (!state.originalImage) return;
     const resize = state.settings.resize;
-    if (!els.resizeKeepRatio.checked) {
+    if (resize.preserveAspectRatio) {
         updateSettings('resize', { preserveAspectRatio: false }, true);
         return;
     }
     const base = getResizeBaseSize();
     const height = scaleSide(resize.width, base.height, base.width);
     if (!isAllowedResizeSize(resize.width, height, base)) {
-        els.resizeKeepRatio.checked = false;
         els.resizeError.textContent = RESIZE_RATIO_LIMIT_ERROR;
         return;
     }
@@ -745,20 +763,123 @@ function getExportFileName(name) {
     return `${base}-edited.png`;
 }
 
+// Сбрасывает настройки обработки; изображение и zoom сохраняются.
 function reset() {
     if (!state.originalImage) return;
     state.settings = createDefaultSettings(state.originalImage.width, state.originalImage.height);
     syncResizeDraft();
     syncCropDraft();
-    state.zoom = 1;
     state.isPicking = false;
     showStatus('');
     reprocess();
 }
 
+// Zoom меняет только CSS-размер canvas (render), результат не пересчитывается.
+function setZoom(zoom) {
+    if (!state.resultImage || !ZOOM_LEVELS.includes(zoom)) return;
+    state.zoom = zoom;
+    render();
+}
+
+// Соседний уровень. Если кнопка стала disabled на крайнем уровне,
+// фокус переходит на select, чтобы не потеряться.
+function stepZoom(direction, button) {
+    const index = ZOOM_LEVELS.indexOf(state.zoom) + direction;
+    if (index < 0 || index >= ZOOM_LEVELS.length) return;
+    setZoom(ZOOM_LEVELS[index]);
+    if (button.disabled) els.zoomSelect.focus();
+}
+
+// ---------- UI components ----------
+
+const TOOLTIP_DELAY = 450; // ms
+const TOOLTIP_GAP = 8;     // px между элементом и tooltip (--space-2)
+const TOOLTIP_MARGIN = 4;  // px минимальный отступ от края окна
+const tooltipElement = document.getElementById('tooltip');
+let tooltipTimer = 0;
+
+// Заполненная часть slider (.range). Вызывать и после программной смены value.
+function syncRangeFill(input) {
+    const min = Number(input.min) || 0;
+    const max = input.max === '' ? 100 : Number(input.max);
+    const fill = max > min ? (Number(input.value) - min) / (max - min) * 100 : 0;
+    input.style.setProperty('--range-fill', `${fill}%`);
+}
+
+// Swatch и hex у .color-control. Вызывать и после программной смены value.
+function syncColorControl(input) {
+    const control = input.closest('.color-control');
+    control.style.setProperty('--swatch-color', input.value);
+    control.querySelector('.color-value').textContent = input.value.toUpperCase();
+}
+
+// Ограничивает координату диапазоном [TOOLTIP_MARGIN, limit - size - TOOLTIP_MARGIN].
+// Если подсказка больше окна, побеждает начальный край (TOOLTIP_MARGIN).
+function clampTooltipCoordinate(value, size, limit) {
+    return Math.max(TOOLTIP_MARGIN, Math.min(value, limit - size - TOOLTIP_MARGIN));
+}
+
+// Один fixed-элемент для всех [data-tooltip]: под элементом, при нехватке
+// места — над ним; координаты зажаты в окно по обеим осям, поэтому подсказка
+// не обрезается прокруткой sidebar и краями окна. Ширину ограничивает CSS (max-width).
+function showTooltip(target) {
+    tooltipElement.textContent = target.dataset.tooltip;
+    tooltipElement.style.left = '0px';
+    tooltipElement.style.top = '0px';
+    tooltipElement.hidden = false;
+
+    const rect = target.getBoundingClientRect();
+    const tip = tooltipElement.getBoundingClientRect();
+    let top = rect.bottom + TOOLTIP_GAP;
+    if (top + tip.height > window.innerHeight - TOOLTIP_MARGIN) top = rect.top - TOOLTIP_GAP - tip.height;
+    top = clampTooltipCoordinate(top, tip.height, window.innerHeight);
+    const left = clampTooltipCoordinate(rect.left + (rect.width - tip.width) / 2, tip.width, window.innerWidth);
+
+    tooltipElement.style.left = `${left}px`;
+    tooltipElement.style.top = `${top}px`;
+}
+
+function scheduleTooltip(target) {
+    hideTooltip();
+    tooltipTimer = setTimeout(() => showTooltip(target), TOOLTIP_DELAY);
+}
+
+function hideTooltip() {
+    clearTimeout(tooltipTimer);
+    tooltipElement.hidden = true;
+}
+
+function initUiComponents() {
+    document.querySelectorAll('.range').forEach(syncRangeFill);
+    document.querySelectorAll('.color-control input[type="color"]').forEach(syncColorControl);
+
+    document.addEventListener('input', (event) => {
+        const target = event.target;
+        if (target.matches('.range')) syncRangeFill(target);
+        else if (target.matches('.color-control input[type="color"]')) syncColorControl(target);
+    });
+
+    document.querySelectorAll('[data-tooltip]').forEach((element) => {
+        element.addEventListener('mouseenter', () => scheduleTooltip(element));
+        element.addEventListener('mouseleave', hideTooltip);
+        element.addEventListener('focus', () => {
+            if (element.matches(':focus-visible')) scheduleTooltip(element);
+        });
+        element.addEventListener('blur', hideTooltip);
+        element.addEventListener('pointerdown', hideTooltip);
+    });
+    window.addEventListener('scroll', hideTooltip, true); // в т. ч. прокрутка sidebar и preview
+    // Escape убирает подсказку, фокус остаётся на элементе. Отдельный listener:
+    // существующий обработчик Escape (выход из пипетки) не меняется.
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') hideTooltip();
+    });
+}
+
 // ---------- Events ----------
 
 els.openButton.addEventListener('click', () => els.fileInput.click());
+els.chooseFileButton.addEventListener('click', () => els.fileInput.click());
 
 els.fileInput.addEventListener('change', () => {
     const file = els.fileInput.files[0];
@@ -769,12 +890,9 @@ els.fileInput.addEventListener('change', () => {
 els.exportButton.addEventListener('click', exportPng);
 els.resetButton.addEventListener('click', reset);
 
-els.zoomButtons.forEach((button) => {
-    button.addEventListener('click', () => {
-        state.zoom = Number(button.dataset.zoom);
-        render();
-    });
-});
+els.zoomOutButton.addEventListener('click', () => stepZoom(-1, els.zoomOutButton));
+els.zoomInButton.addEventListener('click', () => stepZoom(1, els.zoomInButton));
+els.zoomSelect.addEventListener('change', () => setZoom(Number(els.zoomSelect.value)));
 
 els.bgEnabled.addEventListener('change', () => {
     if (!els.bgEnabled.checked) {
@@ -792,10 +910,8 @@ els.bgTolerance.addEventListener('input', () => {
     updateSettings('background', { tolerance: Number(els.bgTolerance.value) });
 });
 
-els.bgModeInputs.forEach((input) => {
-    input.addEventListener('change', () => {
-        if (input.checked) updateSettings('background', { mode: input.value });
-    });
+els.bgMode.addEventListener('change', () => {
+    updateSettings('background', { mode: els.bgMode.value });
 });
 
 els.bgPickButton.addEventListener('click', () => setPicking(!state.isPicking));
@@ -804,10 +920,8 @@ els.transformButtons.forEach((button) => {
     button.addEventListener('click', () => applyTransformCommand(button.dataset.transform));
 });
 
-els.resizeMethodButtons.forEach((button) => {
-    button.addEventListener('click', () => {
-        updateSettings('resize', { method: button.dataset.resizeMethod });
-    });
+els.resizeMethod.addEventListener('change', () => {
+    updateSettings('resize', { method: els.resizeMethod.value });
 });
 
 els.resizeWidth.addEventListener('input', () => onResizeSizeInput('width'));
@@ -820,16 +934,14 @@ els.resizeWidth.addEventListener('keydown', (event) => {
 els.resizeHeight.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') onResizeSizeCommit('height');
 });
-els.resizeKeepRatio.addEventListener('change', onKeepRatioChange);
+els.resizeLockButton.addEventListener('click', toggleKeepRatio);
 
 els.cropEnabled.addEventListener('change', () => {
     updateSettings('crop', { enabled: els.cropEnabled.checked });
 });
 
-els.cropModeInputs.forEach((input) => {
-    input.addEventListener('change', () => {
-        if (input.checked) updateSettings('crop', { mode: input.value });
-    });
+els.cropMode.addEventListener('change', () => {
+    updateSettings('crop', { mode: els.cropMode.value });
 });
 
 els.cropAnchorButtons.forEach((button) => {
@@ -860,6 +972,12 @@ els.previewArea.addEventListener('dragenter', (event) => {
     els.previewArea.classList.add('is-dragging');
 });
 
+// Курсор «копирование» над drop-зоной.
+els.previewArea.addEventListener('dragover', (event) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+});
+
 els.previewArea.addEventListener('dragleave', () => {
     dragDepth = Math.max(0, dragDepth - 1);
     if (dragDepth === 0) els.previewArea.classList.remove('is-dragging');
@@ -872,4 +990,5 @@ els.previewArea.addEventListener('drop', (event) => {
     loadFile(event.dataTransfer.files[0]);
 });
 
+initUiComponents();
 render();

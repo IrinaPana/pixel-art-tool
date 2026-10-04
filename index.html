@@ -8,158 +8,268 @@
     <script src="image-processing.js" defer></script>
     <script src="app.js" defer></script>
 </head>
-<body>
-    <header class="toolbar">
-        <button id="open-button" type="button">Open</button>
-        <button id="export-button" type="button" class="primary" disabled>Export PNG</button>
-        <button id="reset-button" type="button" disabled>Reset</button>
+<body class="app">
+    <svg class="icon-sprite" aria-hidden="true" focusable="false">
+        <symbol id="icon-rotate-left" viewBox="0 0 16 16">
+            <path d="M2 8a6 6 0 1 0 6-6 6.5 6.5 0 0 0-4.49 1.83L2 5.33"/>
+            <path d="M2 2v3.33h3.33"/>
+        </symbol>
+        <symbol id="icon-rotate-right" viewBox="0 0 16 16">
+            <path d="M14 8a6 6 0 1 1-6-6c1.68 0 3.29.67 4.49 1.83L14 5.33"/>
+            <path d="M14 2v3.33h-3.33"/>
+        </symbol>
+        <symbol id="icon-flip-horizontal" viewBox="0 0 16 16">
+            <path d="M2 4.67 5.33 8 2 11.33z"/>
+            <path d="M14 4.67 10.67 8 14 11.33z"/>
+            <path d="M8 1.33v1.34M8 5.33v1.34M8 9.33v1.34M8 13.33v1.34"/>
+        </symbol>
+        <symbol id="icon-flip-vertical" viewBox="0 0 16 16">
+            <path d="M4.67 2 8 5.33 11.33 2z"/>
+            <path d="M4.67 14 8 10.67 11.33 14z"/>
+            <path d="M1.33 8h1.34M5.33 8h1.34M9.33 8h1.34M13.33 8h1.34"/>
+        </symbol>
+        <symbol id="icon-lock" viewBox="0 0 16 16">
+            <rect x="2" y="7.33" width="12" height="7.33" rx="1.33"/>
+            <path d="M4.67 7.33V4.67a3.33 3.33 0 0 1 6.67 0v2.66"/>
+        </symbol>
+        <symbol id="icon-unlock" viewBox="0 0 16 16">
+            <rect x="2" y="7.33" width="12" height="7.33" rx="1.33"/>
+            <path d="M4.67 7.33V4.67a3.33 3.33 0 0 1 6.4-1.3"/>
+        </symbol>
+        <symbol id="icon-minus" viewBox="0 0 16 16">
+            <path d="M3.33 8h9.34"/>
+        </symbol>
+        <symbol id="icon-plus" viewBox="0 0 16 16">
+            <path d="M8 3.33v9.34M3.33 8h9.34"/>
+        </symbol>
+        <symbol id="icon-dot" viewBox="0 0 16 16">
+            <circle cx="8" cy="8" r="2" fill="currentColor" stroke="none"/>
+        </symbol>
+    </svg>
+
+    <header class="app-toolbar">
+        <h1 class="app-toolbar-title">Pixel Tool</h1>
+        <div class="app-toolbar-actions">
+            <button id="reset-button" type="button" class="button button--ghost" disabled>Reset</button>
+            <button id="open-button" type="button" class="button button--secondary">Open image</button>
+            <button id="export-button" type="button" class="button button--primary" disabled>Export PNG</button>
+        </div>
         <input id="file-input" type="file" accept="image/png,image/jpeg" hidden>
     </header>
 
-    <main class="workspace">
-        <section id="preview-area" class="preview-area" aria-label="Preview">
-            <div class="preview-stage">
-                <canvas id="preview-canvas"></canvas>
+    <main class="app-workspace">
+        <section id="preview-area" class="app-preview" aria-label="Preview">
+            <div class="app-preview-scroll">
+                <div class="app-preview-stage">
+                    <canvas id="preview-canvas" class="app-preview-canvas"></canvas>
+                </div>
             </div>
-            <p class="empty-hint">Open or drop a PNG or JPEG image</p>
+            <div class="app-preview-empty">
+                <p class="app-preview-empty-title">Drop image here</p>
+                <p>or <button id="choose-file-button" type="button" class="app-preview-empty-action">choose a file</button></p>
+            </div>
+            <div class="app-preview-drop" aria-hidden="true">Drop image to open</div>
         </section>
 
-        <aside class="panel">
-            <section class="panel-group">
-                <h2>Zoom</h2>
-                <div class="segmented" role="group" aria-label="Zoom">
-                    <button type="button" data-zoom="1" disabled>100%</button>
-                    <button type="button" data-zoom="2" disabled>200%</button>
-                    <button type="button" data-zoom="4" disabled>400%</button>
-                    <button type="button" data-zoom="8" disabled>800%</button>
+        <aside class="app-sidebar" aria-label="Settings">
+            <section class="sidebar-section" aria-labelledby="bg-heading">
+                <div class="section-header">
+                    <h2 id="bg-heading" class="section-heading">Background</h2>
+                    <input id="bg-enabled" type="checkbox" role="switch" class="section-toggle"
+                           aria-label="Enable background removal" disabled>
                 </div>
-            </section>
-
-            <section class="panel-group">
-                <h2>Background</h2>
-                <label class="check">
-                    <input id="bg-enabled" type="checkbox" disabled>
-                    Remove background
-                </label>
-                <fieldset id="bg-options" class="options" disabled>
-                    <div class="color-row">
-                        <input id="bg-color" type="color" value="#ffffff" aria-label="Background color">
-                        <output id="bg-color-value" for="bg-color">#FFFFFF</output>
-                        <button id="bg-pick-button" type="button" aria-pressed="false"
-                                title="Pick color from image (Esc to cancel)">Pick</button>
-                    </div>
-                    <label class="field">
-                        <span class="field-label">
-                            Tolerance <output id="bg-tolerance-value" for="bg-tolerance">0</output>
-                        </span>
-                        <input id="bg-tolerance" type="range" min="0" max="255" step="1" value="0">
-                    </label>
-                    <div class="radio-list" role="radiogroup" aria-label="Mode">
-                        <label><input type="radio" name="bg-mode" value="all"> All matching pixels</label>
-                        <label><input type="radio" name="bg-mode" value="connected" checked> Connected background</label>
-                    </div>
-                </fieldset>
-            </section>
-
-            <section class="panel-group">
-                <h2>Transform</h2>
-                <div class="button-grid" role="group" aria-label="Transform">
-                    <button type="button" data-transform="rotate-left" disabled
-                            title="Rotate left 90°" aria-label="Rotate left 90°">↺ 90°</button>
-                    <button type="button" data-transform="rotate-right" disabled
-                            title="Rotate right 90°" aria-label="Rotate right 90°">↻ 90°</button>
-                    <button type="button" data-transform="flip-x" disabled
-                            title="Flip horizontal" aria-label="Flip horizontal">Flip H</button>
-                    <button type="button" data-transform="flip-y" disabled
-                            title="Flip vertical" aria-label="Flip vertical">Flip V</button>
-                </div>
-            </section>
-
-            <section class="panel-group">
-                <h2>Resize</h2>
-                <fieldset id="resize-options" class="options" disabled>
-                    <div class="segmented segmented-2" role="group" aria-label="Resize method">
-                        <button type="button" data-resize-method="nearest">Nearest</button>
-                        <button type="button" data-resize-method="area">Area</button>
-                    </div>
-                    <p id="resize-note" class="hint"></p>
-                    <div class="size-row">
-                        <label class="field">
-                            <span class="field-label">Width, px</span>
-                            <input id="resize-width" type="number" min="1" step="1" inputmode="numeric" aria-describedby="resize-error">
-                        </label>
-                        <label class="field">
-                            <span class="field-label">Height, px</span>
-                            <input id="resize-height" type="number" min="1" step="1" inputmode="numeric" aria-describedby="resize-error">
-                        </label>
-                    </div>
-                    <p id="resize-error" class="field-error" role="alert"></p>
-                    <label class="check">
-                        <input id="resize-keep-ratio" type="checkbox" checked>
-                        Preserve aspect ratio
-                    </label>
-                </fieldset>
-            </section>
-
-            <section class="panel-group">
-                <h2>Crop</h2>
-                <label class="check">
-                    <input id="crop-enabled" type="checkbox" disabled>
-                    Crop image
-                </label>
-                <fieldset id="crop-options" class="options" disabled>
-                    <div class="radio-list" role="radiogroup" aria-label="Crop mode">
-                        <label><input type="radio" name="crop-mode" value="content" checked> Content</label>
-                        <label><input type="radio" name="crop-mode" value="margin"> Content + margin</label>
-                        <label><input type="radio" name="crop-mode" value="fixed"> Fixed size</label>
-                    </div>
-                    <label id="crop-margin-field" class="field" hidden>
-                        <span class="field-label">Margin, px</span>
-                        <input id="crop-margin" type="number" min="0" step="1" inputmode="numeric" aria-describedby="crop-error">
-                    </label>
-                    <div id="crop-fixed-fields" class="crop-fixed" hidden>
-                        <div class="size-row">
-                            <label class="field">
-                                <span class="field-label">Width, px</span>
-                                <input id="crop-width" type="number" min="1" step="1" inputmode="numeric" aria-describedby="crop-error">
-                            </label>
-                            <label class="field">
-                                <span class="field-label">Height, px</span>
-                                <input id="crop-height" type="number" min="1" step="1" inputmode="numeric" aria-describedby="crop-error">
-                            </label>
-                        </div>
-                        <div class="field">
-                            <span class="field-label">Anchor</span>
-                            <div class="anchor-grid" role="group" aria-label="Anchor">
-                                <button type="button" data-anchor="top-left" aria-label="Top left" title="Top left">↖</button>
-                                <button type="button" data-anchor="top" aria-label="Top" title="Top">↑</button>
-                                <button type="button" data-anchor="top-right" aria-label="Top right" title="Top right">↗</button>
-                                <button type="button" data-anchor="left" aria-label="Left" title="Left">←</button>
-                                <button type="button" data-anchor="center" aria-label="Center" title="Center">•</button>
-                                <button type="button" data-anchor="right" aria-label="Right" title="Right">→</button>
-                                <button type="button" data-anchor="bottom-left" aria-label="Bottom left" title="Bottom left">↙</button>
-                                <button type="button" data-anchor="bottom" aria-label="Bottom" title="Bottom">↓</button>
-                                <button type="button" data-anchor="bottom-right" aria-label="Bottom right" title="Bottom right">↘</button>
+                <fieldset id="bg-options" class="control-fieldset" disabled hidden>
+                    <div class="control-row">
+                        <label for="bg-color" class="control-label">Color</label>
+                        <div class="control-group">
+                            <div class="color-control">
+                                <span class="color-swatch"></span>
+                                <span class="color-value">#FFFFFF</span>
+                                <input id="bg-color" type="color" value="#ffffff">
                             </div>
+                            <button id="bg-pick-button" type="button" class="button button--secondary"
+                                    aria-pressed="false">Pick</button>
                         </div>
                     </div>
-                    <p id="crop-note" class="hint"></p>
-                    <p id="crop-error" class="field-error" role="alert"></p>
+                    <div class="control-row">
+                        <label for="bg-mode" class="control-label">Mode</label>
+                        <select id="bg-mode" class="select">
+                            <option value="connected">Connected background</option>
+                            <option value="all">All matching pixels</option>
+                        </select>
+                    </div>
+                    <div class="slider-row">
+                        <label for="bg-tolerance" class="control-label">Tolerance</label>
+                        <input id="bg-tolerance" type="range" class="range" min="0" max="255" step="1" value="0">
+                        <output id="bg-tolerance-value" class="slider-value" for="bg-tolerance">0</output>
+                    </div>
                 </fieldset>
             </section>
 
-            <section class="panel-group">
-                <h2>Image</h2>
-                <dl class="info">
-                    <dt>File</dt>
-                    <dd id="file-name-value">—</dd>
-                    <dt>Size</dt>
-                    <dd id="size-value">—</dd>
-                </dl>
+            <hr class="divider">
+
+            <section class="sidebar-section" aria-labelledby="transform-heading">
+                <div class="section-header">
+                    <h2 id="transform-heading" class="section-heading">Transform</h2>
+                </div>
+                <fieldset id="transform-options" class="control-fieldset" disabled>
+                    <div class="button-row" role="group" aria-labelledby="transform-heading">
+                        <button type="button" class="icon-button" data-transform="rotate-left"
+                                aria-label="Rotate left 90°" data-tooltip="Rotate left 90°">
+                            <svg class="icon" aria-hidden="true"><use href="#icon-rotate-left"></use></svg>
+                        </button>
+                        <button type="button" class="icon-button" data-transform="rotate-right"
+                                aria-label="Rotate right 90°" data-tooltip="Rotate right 90°">
+                            <svg class="icon" aria-hidden="true"><use href="#icon-rotate-right"></use></svg>
+                        </button>
+                        <button type="button" class="icon-button" data-transform="flip-x"
+                                aria-label="Flip horizontal" data-tooltip="Flip horizontal">
+                            <svg class="icon" aria-hidden="true"><use href="#icon-flip-horizontal"></use></svg>
+                        </button>
+                        <button type="button" class="icon-button" data-transform="flip-y"
+                                aria-label="Flip vertical" data-tooltip="Flip vertical">
+                            <svg class="icon" aria-hidden="true"><use href="#icon-flip-vertical"></use></svg>
+                        </button>
+                    </div>
+                </fieldset>
             </section>
 
-            <p id="status" class="status" role="status" aria-live="polite"></p>
+            <hr class="divider">
+
+            <section class="sidebar-section" aria-labelledby="resize-heading">
+                <div class="section-header">
+                    <h2 id="resize-heading" class="section-heading">Resize</h2>
+                </div>
+                <fieldset id="resize-options" class="control-fieldset" disabled>
+                    <div class="value-row">
+                        <label class="value-field">
+                            <span class="value-label">W</span>
+                            <input id="resize-width" class="input input--number" type="number" min="1" step="1"
+                                   inputmode="numeric" aria-label="Width" aria-describedby="resize-error">
+                        </label>
+                        <span class="value-separator" aria-hidden="true">×</span>
+                        <label class="value-field">
+                            <span class="value-label">H</span>
+                            <input id="resize-height" class="input input--number" type="number" min="1" step="1"
+                                   inputmode="numeric" aria-label="Height" aria-describedby="resize-error">
+                        </label>
+                        <button id="resize-lock-button" type="button" class="icon-button" aria-pressed="true"
+                                aria-label="Preserve aspect ratio" data-tooltip="Preserve aspect ratio">
+                            <svg class="icon" aria-hidden="true"><use href="#icon-lock"></use></svg>
+                        </button>
+                    </div>
+                    <p id="resize-error" class="inline-message inline-message--error" role="alert"></p>
+                    <div class="control-row">
+                        <label for="resize-method" class="control-label">Method</label>
+                        <select id="resize-method" class="select">
+                            <option value="nearest">Nearest</option>
+                            <option value="area">Area</option>
+                        </select>
+                    </div>
+                    <p id="resize-note" class="help-text"></p>
+                </fieldset>
+            </section>
+
+            <hr class="divider">
+
+            <section class="sidebar-section" aria-labelledby="crop-heading">
+                <div class="section-header">
+                    <h2 id="crop-heading" class="section-heading">Crop</h2>
+                    <input id="crop-enabled" type="checkbox" role="switch" class="section-toggle"
+                           aria-label="Enable crop" disabled>
+                </div>
+                <fieldset id="crop-options" class="control-fieldset" disabled hidden>
+                    <div class="control-row">
+                        <label for="crop-mode" class="control-label">Mode</label>
+                        <select id="crop-mode" class="select">
+                            <option value="content">Content</option>
+                            <option value="margin">Content + margin</option>
+                            <option value="fixed">Fixed size</option>
+                        </select>
+                    </div>
+                    <div class="control-row" data-crop-mode="margin" hidden>
+                        <label for="crop-margin" class="control-label">Margin</label>
+                        <div class="control-group">
+                            <input id="crop-margin" class="input input--number input--narrow" type="number" min="0"
+                                   step="1" inputmode="numeric" aria-describedby="crop-error crop-warning">
+                            <span class="unit">px</span>
+                        </div>
+                    </div>
+                    <div class="value-row" data-crop-mode="fixed" hidden>
+                        <label class="value-field">
+                            <span class="value-label">W</span>
+                            <input id="crop-width" class="input input--number" type="number" min="1" step="1"
+                                   inputmode="numeric" aria-label="Crop width" aria-describedby="crop-error crop-warning">
+                        </label>
+                        <span class="value-separator" aria-hidden="true">×</span>
+                        <label class="value-field">
+                            <span class="value-label">H</span>
+                            <input id="crop-height" class="input input--number" type="number" min="1" step="1"
+                                   inputmode="numeric" aria-label="Crop height" aria-describedby="crop-error crop-warning">
+                        </label>
+                    </div>
+                    <div class="control-row control-row--top" data-crop-mode="fixed" hidden>
+                        <span id="crop-anchor-label" class="control-label">Anchor</span>
+                        <div class="anchor-picker" role="group" aria-labelledby="crop-anchor-label">
+                            <button type="button" class="anchor-cell" data-anchor="top-left" aria-label="Top left">
+                                <svg class="icon" aria-hidden="true"><use href="#icon-dot"></use></svg>
+                            </button>
+                            <button type="button" class="anchor-cell" data-anchor="top" aria-label="Top center">
+                                <svg class="icon" aria-hidden="true"><use href="#icon-dot"></use></svg>
+                            </button>
+                            <button type="button" class="anchor-cell" data-anchor="top-right" aria-label="Top right">
+                                <svg class="icon" aria-hidden="true"><use href="#icon-dot"></use></svg>
+                            </button>
+                            <button type="button" class="anchor-cell" data-anchor="left" aria-label="Center left">
+                                <svg class="icon" aria-hidden="true"><use href="#icon-dot"></use></svg>
+                            </button>
+                            <button type="button" class="anchor-cell" data-anchor="center" aria-label="Center">
+                                <svg class="icon" aria-hidden="true"><use href="#icon-dot"></use></svg>
+                            </button>
+                            <button type="button" class="anchor-cell" data-anchor="right" aria-label="Center right">
+                                <svg class="icon" aria-hidden="true"><use href="#icon-dot"></use></svg>
+                            </button>
+                            <button type="button" class="anchor-cell" data-anchor="bottom-left" aria-label="Bottom left">
+                                <svg class="icon" aria-hidden="true"><use href="#icon-dot"></use></svg>
+                            </button>
+                            <button type="button" class="anchor-cell" data-anchor="bottom" aria-label="Bottom center">
+                                <svg class="icon" aria-hidden="true"><use href="#icon-dot"></use></svg>
+                            </button>
+                            <button type="button" class="anchor-cell" data-anchor="bottom-right" aria-label="Bottom right">
+                                <svg class="icon" aria-hidden="true"><use href="#icon-dot"></use></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <p id="crop-error" class="inline-message inline-message--error" role="alert"></p>
+                    <p id="crop-warning" class="inline-message inline-message--warning" role="alert"></p>
+                    <p id="crop-note" class="help-text"></p>
+                </fieldset>
+            </section>
         </aside>
     </main>
+
+    <footer class="app-bottom-bar">
+        <span id="result-size" class="bottom-bar-size">No image</span>
+        <span id="file-name" class="bottom-bar-file"></span>
+        <p id="status" class="bottom-bar-status" role="status" aria-live="polite"></p>
+        <div class="zoom-control">
+            <button id="zoom-out-button" type="button" class="icon-button icon-button--small"
+                    aria-label="Zoom out" data-tooltip="Zoom out" disabled>
+                <svg class="icon" aria-hidden="true"><use href="#icon-minus"></use></svg>
+            </button>
+            <select id="zoom-select" class="select zoom-value" aria-label="Zoom" disabled>
+                <option value="1">100%</option>
+                <option value="2">200%</option>
+                <option value="4">400%</option>
+                <option value="8">800%</option>
+            </select>
+            <button id="zoom-in-button" type="button" class="icon-button icon-button--small"
+                    aria-label="Zoom in" data-tooltip="Zoom in" disabled>
+                <svg class="icon" aria-hidden="true"><use href="#icon-plus"></use></svg>
+            </button>
+        </div>
+    </footer>
+
+    <div id="tooltip" class="tooltip" aria-hidden="true" hidden></div>
 </body>
 </html>
