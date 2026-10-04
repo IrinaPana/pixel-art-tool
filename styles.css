@@ -1,219 +1,9 @@
-:root {
-    --bg: #f4f4f5;
-    --surface: #ffffff;
-    --border: #e4e4e7;
-    --text: #18181b;
-    --muted: #71717a;
-    --accent: #2563eb;
-    --accent-text: #ffffff;
-    --error: #dc2626;
-    --checker-light: #ffffff;
-    --checker-dark: #d4d4d8;
-}
-
 * { box-sizing: border-box; }
 
-/* hidden сильнее display у .field / .crop-fixed */
+/* hidden сильнее display у layout-классов (.control-row, .value-row, .control-fieldset) */
 [hidden] { display: none !important; }
 
 html, body { height: 100%; margin: 0; }
-
-/* Legacy UI. Тип элемента в :where(), чтобы классы design system имели приоритет. */
-
-:where(button) {
-    font: inherit;
-    padding: 6px 14px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--surface);
-    color: var(--text);
-    cursor: pointer;
-}
-
-:where(button):hover:not(:disabled) { border-color: var(--muted); }
-:where(button):disabled { opacity: 0.45; cursor: default; }
-
-:where(button).primary {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: var(--accent-text);
-}
-
-/* Panel groups — legacy-содержимое .app-sidebar до перестройки sidebar.
-   Специфичность выше .status { margin: 0 } ниже по файлу. */
-
-.panel-group + .panel-group,
-.panel-group + .status { margin-top: var(--space-5); }
-
-.panel-group h2 {
-    margin: 0 0 8px;
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--muted);
-}
-
-.segmented {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 4px;
-}
-
-.segmented button { padding: 6px 0; }
-
-.segmented button[aria-pressed="true"],
-.anchor-grid button[aria-pressed="true"] {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: var(--accent-text);
-}
-
-.button-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 4px;
-}
-
-.button-grid button { padding: 6px 0; }
-
-.check,
-.radio-list label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-}
-
-:where(input)[type="checkbox"],
-:where(input)[type="radio"],
-:where(input)[type="range"] {
-    accent-color: var(--accent);
-    margin: 0;
-}
-
-.options {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    min-width: 0;
-    margin: 12px 0 0;
-    padding: 0;
-    border: 0;
-}
-
-.options:disabled { color: var(--muted); }
-.options:disabled label { cursor: default; }
-
-.color-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.color-row input[type="color"] {
-    width: 32px;
-    height: 28px;
-    padding: 0;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: none;
-    cursor: pointer;
-}
-
-.color-row output {
-    flex: 1;
-    font-family: ui-monospace, monospace;
-}
-
-#bg-pick-button[aria-pressed="true"] {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: var(--accent-text);
-}
-
-.field {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.field-label {
-    display: flex;
-    justify-content: space-between;
-}
-
-.radio-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-#resize-options { margin-top: 0; }
-
-.segmented.segmented-2 { grid-template-columns: repeat(2, 1fr); }
-
-.size-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-}
-
-.crop-fixed {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.anchor-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 32px);
-    gap: 4px;
-}
-
-.anchor-grid button { padding: 4px 0; }
-
-:where(input)[type="number"] {
-    width: 100%;
-    font: inherit;
-    padding: 5px 8px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--surface);
-    color: var(--text);
-}
-
-:where(input)[type="number"]:focus { outline: none; border-color: var(--accent); }
-:where(input)[type="number"][aria-invalid="true"] { border-color: var(--error); }
-
-.hint,
-.field-error {
-    margin: 0;
-    font-size: 12px;
-}
-
-.hint { color: var(--muted); }
-.field-error { color: var(--error); }
-.hint:empty,
-.field-error:empty { display: none; }
-
-.info {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 4px 12px;
-    margin: 0;
-}
-
-.info dt { color: var(--muted); }
-.info dd { margin: 0; overflow-wrap: anywhere; }
-
-.status {
-    margin: 0;
-    color: var(--muted);
-}
-
-.status:empty { display: none; }
-.status.is-error { color: var(--error); }
 
 /* ==========================================================================
    Design system — tokens
@@ -311,6 +101,7 @@ html, body { height: 100%; margin: 0; }
 .range,
 .color-control,
 .checkbox,
+.section-toggle,
 .tooltip,
 .inline-message {
     color-scheme: light;
@@ -621,6 +412,7 @@ html, body { height: 100%; margin: 0; }
 .icon-button:focus-visible,
 .input:focus-visible,
 .select:focus-visible,
+.section-toggle:focus-visible,
 .color-control:has(input:focus-visible) {
     outline: none;
     border-color: var(--color-accent);
@@ -634,6 +426,7 @@ html, body { height: 100%; margin: 0; }
 .input:disabled,
 .select:disabled,
 .range:disabled,
+.section-toggle:disabled,
 .checkbox input:disabled,
 .color-control:has(input:disabled) {
     opacity: var(--disabled-opacity);
@@ -655,6 +448,48 @@ html, body { height: 100%; margin: 0; }
     font-weight: var(--font-weight-semibold);
     letter-spacing: 0.06em;
     text-transform: uppercase;
+}
+
+/* ---------- Section header & toggle ---------- */
+
+/* Заголовок секции + switch опционального этапа pipeline (Background, Crop) */
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+}
+
+/* Switch On/Off: native checkbox (role="switch"). Knob — radial-gradient
+   в background-image, сдвиг через background-position (без ::before на input).
+   Knob 12px в квадрате 16 × 16: отступ 2px с каждой стороны. */
+.section-toggle {
+    --toggle-width: var(--control-height-small);
+    --toggle-height: var(--space-4);
+    flex: none;
+    width: var(--toggle-width);
+    height: var(--toggle-height);
+    margin: 0;
+    border: 0;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-border-strong);
+    background-image: radial-gradient(circle,
+        var(--color-control-bg) 5.5px, transparent 6px);
+    background-size: var(--toggle-height) var(--toggle-height);
+    background-repeat: no-repeat;
+    background-position: left center;
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+    transition:
+        background-color var(--transition-fast),
+        background-position var(--transition-fast),
+        box-shadow var(--transition-fast);
+}
+
+.section-toggle:checked {
+    background-color: var(--color-accent);
+    background-position: right center;
 }
 
 /* ---------- Divider ---------- */
@@ -905,6 +740,9 @@ html, body { height: 100%; margin: 0; }
     overflow-y: auto;
 }
 
+/* Divider без содержимого: без запрета сжатия исчезает при переполнении по высоте */
+.app-sidebar > .divider { flex-shrink: 0; }
+
 .sidebar-section,
 .control-fieldset {
     display: flex;
@@ -972,12 +810,52 @@ html, body { height: 100%; margin: 0; }
 .value-separator,
 .unit { color: var(--color-text-secondary); }
 
-/* 3 × 3 anchors */
+/* 3 × 3 anchors: единая сетка — линии = фон контейнера в зазорах 1px между ячейками.
+   Radius только у внешнего контейнера, ячейки без radius. */
 .anchor-picker {
     display: grid;
-    grid-template-columns: repeat(3, var(--control-height));
-    gap: var(--space-1);
+    grid-template-columns: repeat(3, var(--control-height-small));
+    gap: var(--border-width);
+    justify-self: start;
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-md);
+    background-color: var(--color-border);
+    overflow: hidden;
 }
+
+.anchor-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--control-height-small);
+    height: var(--control-height-small);
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background-color: var(--color-control-bg);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition:
+        background-color var(--transition-fast),
+        color var(--transition-fast);
+}
+
+.anchor-cell:hover { background-color: var(--color-control-hover); }
+
+.anchor-cell[aria-pressed="true"] {
+    background-color: var(--color-accent-soft);
+    color: var(--color-accent);
+}
+
+/* Внутренняя рамка: внешний box-shadow обрезался бы overflow контейнера */
+.anchor-cell:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 var(--border-width) var(--color-accent);
+}
+
+.anchor-cell:disabled { cursor: default; pointer-events: none; }
+.anchor-picker:has(.anchor-cell:disabled) { opacity: var(--disabled-opacity); }
 
 /* ---------- Bottom bar ---------- */
 

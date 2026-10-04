@@ -42,8 +42,7 @@ const els = {
     fileInput: document.getElementById('file-input'),
     previewArea: document.getElementById('preview-area'),
     canvas: document.getElementById('preview-canvas'),
-    fileNameValue: document.getElementById('file-name-value'),
-    sizeValue: document.getElementById('size-value'),
+    fileName: document.getElementById('file-name'),
     status: document.getElementById('status'),
     resultSize: document.getElementById('result-size'),
     zoomOutButton: document.getElementById('zoom-out-button'),
@@ -52,30 +51,31 @@ const els = {
     bgEnabled: document.getElementById('bg-enabled'),
     bgOptions: document.getElementById('bg-options'),
     bgColor: document.getElementById('bg-color'),
-    bgColorValue: document.getElementById('bg-color-value'),
     bgPickButton: document.getElementById('bg-pick-button'),
     bgTolerance: document.getElementById('bg-tolerance'),
     bgToleranceValue: document.getElementById('bg-tolerance-value'),
-    bgModeInputs: document.querySelectorAll('input[name="bg-mode"]'),
-    transformButtons: document.querySelectorAll('[data-transform]'),
+    bgMode: document.getElementById('bg-mode'),
+    transformOptions: document.getElementById('transform-options'),
+    transformButtons: document.querySelectorAll('[data-transform]'), // только для подписки на click
     resizeOptions: document.getElementById('resize-options'),
-    resizeMethodButtons: document.querySelectorAll('[data-resize-method]'),
+    resizeMethod: document.getElementById('resize-method'),
     resizeNote: document.getElementById('resize-note'),
     resizeWidth: document.getElementById('resize-width'),
     resizeHeight: document.getElementById('resize-height'),
     resizeError: document.getElementById('resize-error'),
-    resizeKeepRatio: document.getElementById('resize-keep-ratio'),
+    resizeLockButton: document.getElementById('resize-lock-button'),
+    resizeLockIcon: document.querySelector('#resize-lock-button use'),
     cropEnabled: document.getElementById('crop-enabled'),
     cropOptions: document.getElementById('crop-options'),
-    cropModeInputs: document.querySelectorAll('input[name="crop-mode"]'),
-    cropMarginField: document.getElementById('crop-margin-field'),
+    cropMode: document.getElementById('crop-mode'),
+    cropModeBlocks: document.querySelectorAll('[data-crop-mode]'),
     cropMargin: document.getElementById('crop-margin'),
-    cropFixedFields: document.getElementById('crop-fixed-fields'),
     cropWidth: document.getElementById('crop-width'),
     cropHeight: document.getElementById('crop-height'),
     cropAnchorButtons: document.querySelectorAll('[data-anchor]'),
     cropNote: document.getElementById('crop-note'),
-    cropError: document.getElementById('crop-error')
+    cropError: document.getElementById('crop-error'),
+    cropWarning: document.getElementById('crop-warning')
 };
 
 const previewContext = els.canvas.getContext('2d');
@@ -205,16 +205,13 @@ function render() {
         els.zoomSelect.value = String(state.zoom);
         els.zoomOutButton.disabled = !hasImage || zoomIndex <= 0;
         els.zoomInButton.disabled = !hasImage || zoomIndex >= ZOOM_LEVELS.length - 1;
-        els.transformButtons.forEach((button) => {
-            button.disabled = !hasImage;
-        });
+        els.transformOptions.disabled = !hasImage;
         renderBackgroundControls(hasImage);
         renderResizeControls(hasImage);
         renderCropControls(hasImage);
 
         if (!hasImage) {
-            els.fileNameValue.textContent = '—';
-            els.sizeValue.textContent = '—';
+            els.fileName.textContent = '';
             els.resultSize.textContent = 'No image';
             return;
         }
@@ -224,8 +221,8 @@ function render() {
         els.canvas.style.width = result.width * state.zoom + 'px';
         els.canvas.style.height = result.height * state.zoom + 'px';
 
-        els.fileNameValue.textContent = state.fileName;
-        els.sizeValue.textContent = `${result.width} × ${result.height} px`;
+        els.fileName.textContent = state.fileName;
+        els.fileName.title = state.fileName; // полное имя при обрезке ellipsis
         els.resultSize.textContent = `${result.width} × ${result.height} px`;
     } finally {
         renderPreviewControls();
@@ -245,22 +242,22 @@ function renderPreviewControls() {
     els.canvas.classList.toggle('is-picking', state.isPicking);
 }
 
-// Контролы Background отражают state.settings.background;
-// состояние пипетки — в renderPreviewControls().
+// Контролы Background отражают state.settings.background; выключенный этап —
+// настройки скрыты, значения сохраняются. Состояние пипетки — в renderPreviewControls().
 function renderBackgroundControls(hasImage) {
     const background = state.settings.background;
 
     els.bgEnabled.disabled = !hasImage;
     els.bgEnabled.checked = background.enabled;
-    els.bgOptions.disabled = !hasImage || !background.enabled;
+    els.bgOptions.hidden = !background.enabled;
+    els.bgOptions.disabled = !hasImage;
 
     els.bgColor.value = background.color;
-    els.bgColorValue.textContent = background.color.toUpperCase();
+    syncColorControl(els.bgColor);
+    els.bgMode.value = background.mode;
     els.bgTolerance.value = String(background.tolerance);
+    syncRangeFill(els.bgTolerance);
     els.bgToleranceValue.textContent = String(background.tolerance);
-    els.bgModeInputs.forEach((input) => {
-        input.checked = input.value === background.mode;
-    });
 }
 
 // Поля Resize показывают черновик, а не применённые настройки.
@@ -271,10 +268,9 @@ function renderResizeControls(hasImage) {
     const check = hasImage ? getResizeDraftCheck() : { widthInvalid: false, heightInvalid: false, message: '' };
 
     els.resizeOptions.disabled = !hasImage;
-    els.resizeMethodButtons.forEach((button) => {
-        button.setAttribute('aria-pressed', String(button.dataset.resizeMethod === resize.method));
-    });
-    els.resizeKeepRatio.checked = resize.preserveAspectRatio;
+    els.resizeMethod.value = resize.method;
+    els.resizeLockButton.setAttribute('aria-pressed', String(resize.preserveAspectRatio));
+    els.resizeLockIcon.setAttribute('href', resize.preserveAspectRatio ? '#icon-lock' : '#icon-unlock');
 
     renderResizeField(els.resizeWidth, state.resizeDraft.width, check.widthInvalid);
     renderResizeField(els.resizeHeight, state.resizeDraft.height, check.heightInvalid);
@@ -334,7 +330,8 @@ function hasCropConflict() {
     return crop !== null && (crop.status === 'overflow' || crop.status === 'too-large');
 }
 
-// Поля показывают черновик; сообщение = ошибка черновика + конфликт размера.
+// Поля показывают черновик. Показаны только блоки текущего режима; выключенный
+// этап — настройки скрыты, значения сохраняются. Ошибка ввода и конфликт размера — раздельно.
 function renderCropControls(hasImage) {
     const crop = state.settings.crop;
     const check = hasImage ? getCropDraftCheck()
@@ -342,12 +339,12 @@ function renderCropControls(hasImage) {
 
     els.cropEnabled.disabled = !hasImage;
     els.cropEnabled.checked = crop.enabled;
-    els.cropOptions.disabled = !hasImage || !crop.enabled;
-    els.cropModeInputs.forEach((input) => {
-        input.checked = input.value === crop.mode;
+    els.cropOptions.hidden = !crop.enabled;
+    els.cropOptions.disabled = !hasImage;
+    els.cropMode.value = crop.mode;
+    els.cropModeBlocks.forEach((block) => {
+        block.hidden = block.dataset.cropMode !== crop.mode;
     });
-    els.cropMarginField.hidden = crop.mode !== 'margin';
-    els.cropFixedFields.hidden = crop.mode !== 'fixed';
 
     renderResizeField(els.cropMargin, state.cropDraft.margin, check.marginInvalid);
     renderResizeField(els.cropWidth, state.cropDraft.width, check.widthInvalid);
@@ -356,8 +353,9 @@ function renderCropControls(hasImage) {
         button.setAttribute('aria-pressed', String(button.dataset.anchor === crop.anchor));
     });
 
-    const message = [check.message, getCropConflictMessage()].filter(Boolean).join(' ');
-    if (els.cropError.textContent !== message) els.cropError.textContent = message;
+    if (els.cropError.textContent !== check.message) els.cropError.textContent = check.message;
+    const warning = getCropConflictMessage();
+    if (els.cropWarning.textContent !== warning) els.cropWarning.textContent = warning;
     els.cropNote.textContent = state.cropResult && state.cropResult.status === 'empty' ? CROP_EMPTY_NOTE : '';
 }
 
@@ -384,19 +382,21 @@ function getCropConflictMessage() {
     const crop = state.cropResult;
     if (!crop) return '';
     if (crop.status === 'overflow') {
-        return `Content ${crop.contentWidth} × ${crop.contentHeight} px does not fit `
-            + `${crop.width} × ${crop.height} px. Preview shows the image without Crop. Increase the size.`;
+        return `Content is ${crop.contentWidth} × ${crop.contentHeight} px `
+            + `and doesn't fit into ${crop.width} × ${crop.height} px.`;
     }
     if (crop.status === 'too-large') {
         // Пределы — из обработки, по тому же правилу, что и проверка.
-        return `Crop result ${crop.width} × ${crop.height} px exceeds the allowed `
-            + `${crop.maxWidth} × ${crop.maxHeight} px. Preview shows the image without Crop.`;
+        return `Crop size ${crop.width} × ${crop.height} px exceeds the limit of `
+            + `${crop.maxWidth} × ${crop.maxHeight} px.`;
     }
     return '';
 }
 
+// Bottom bar обрезает статус ellipsis; полный текст — в title.
 function showStatus(message, isError = false) {
     els.status.textContent = message;
+    els.status.title = message;
     els.status.classList.toggle('is-error', isError);
 }
 
@@ -599,19 +599,19 @@ function onResizeSizeCommit(axis) {
     commitResizeDraft();
 }
 
-// Переключение пропорций работает от применённых размеров; при успехе
-// черновик заменяется применёнными размерами.
-function onKeepRatioChange() {
+// Lock переключает сохранение пропорций от применённых размеров; при успехе
+// черновик заменяется применёнными размерами. Если пропорции не помещаются
+// в лимит, lock остаётся выключенным, показывается ошибка.
+function toggleKeepRatio() {
     if (!state.originalImage) return;
     const resize = state.settings.resize;
-    if (!els.resizeKeepRatio.checked) {
+    if (resize.preserveAspectRatio) {
         updateSettings('resize', { preserveAspectRatio: false }, true);
         return;
     }
     const base = getResizeBaseSize();
     const height = scaleSide(resize.width, base.height, base.width);
     if (!isAllowedResizeSize(resize.width, height, base)) {
-        els.resizeKeepRatio.checked = false;
         els.resizeError.textContent = RESIZE_RATIO_LIMIT_ERROR;
         return;
     }
@@ -900,10 +900,8 @@ els.bgTolerance.addEventListener('input', () => {
     updateSettings('background', { tolerance: Number(els.bgTolerance.value) });
 });
 
-els.bgModeInputs.forEach((input) => {
-    input.addEventListener('change', () => {
-        if (input.checked) updateSettings('background', { mode: input.value });
-    });
+els.bgMode.addEventListener('change', () => {
+    updateSettings('background', { mode: els.bgMode.value });
 });
 
 els.bgPickButton.addEventListener('click', () => setPicking(!state.isPicking));
@@ -912,10 +910,8 @@ els.transformButtons.forEach((button) => {
     button.addEventListener('click', () => applyTransformCommand(button.dataset.transform));
 });
 
-els.resizeMethodButtons.forEach((button) => {
-    button.addEventListener('click', () => {
-        updateSettings('resize', { method: button.dataset.resizeMethod });
-    });
+els.resizeMethod.addEventListener('change', () => {
+    updateSettings('resize', { method: els.resizeMethod.value });
 });
 
 els.resizeWidth.addEventListener('input', () => onResizeSizeInput('width'));
@@ -928,16 +924,14 @@ els.resizeWidth.addEventListener('keydown', (event) => {
 els.resizeHeight.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') onResizeSizeCommit('height');
 });
-els.resizeKeepRatio.addEventListener('change', onKeepRatioChange);
+els.resizeLockButton.addEventListener('click', toggleKeepRatio);
 
 els.cropEnabled.addEventListener('change', () => {
     updateSettings('crop', { enabled: els.cropEnabled.checked });
 });
 
-els.cropModeInputs.forEach((input) => {
-    input.addEventListener('change', () => {
-        if (input.checked) updateSettings('crop', { mode: input.value });
-    });
+els.cropMode.addEventListener('change', () => {
+    updateSettings('crop', { mode: els.cropMode.value });
 });
 
 els.cropAnchorButtons.forEach((button) => {
