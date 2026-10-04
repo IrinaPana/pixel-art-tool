@@ -165,6 +165,19 @@ Margin относится к итоговому изображению посл�
 
 Дизайн минималистичный и современный. Не добавлять декоративные элементы, которые не помогают работе с изображением.
 
+## Design system
+
+Визуальная система задана в `styles.css`, секции «Design system — tokens / components / layouts». Стиль neutral utility UI: светлый нейтральный интерфейс, один accent, тонкие границы, без теней.
+
+- **Tokens** (`:root`): цвета `--color-*`, типографика `--font-*`, spacing `--space-1…5` (4/8/12/16/24), размеры (`--control-height` 32, `--control-height-small` 28, `--toolbar-height` 48, `--bottom-bar-height` 36, `--sidebar-width` 296, `--label-width` 72), радиусы `--radius-sm/md/lg` (4/6/8), состояния (`--focus-ring`, `--transition-fast`, `--disabled-opacity`).
+- **Components**: `.button` (`--primary` — только Export PNG, `--secondary`, `--ghost`), `.icon-button` (`--small`), `.icon` (sprite в `index.html`: `<svg class="icon"><use href="#icon-…"></use></svg>`), `.input` (`--number`, `--narrow`), `.select`, `.range`, `.color-control` (`.color-swatch`, `.color-value`), `.checkbox`, `.tooltip` (атрибут `data-tooltip`, только для icon-only controls), `.inline-message` (`--warning`, `--error`), `.help-text`, `.section-heading`, `.divider`.
+- **Layouts**: `.app`, `.app-toolbar`, `.app-workspace`, `.app-preview` (`-stage`, `-canvas`, `-empty`), `.app-sidebar`, `.sidebar-section`, `.control-fieldset`, `.control-row` (`--top`), `.control-group`, `.slider-row`, `.value-row`, `.button-row`, `.anchor-picker`, `.app-bottom-bar`, `.zoom-control`.
+- **States**: selected — `aria-pressed="true"` (accent-soft фон, accent рамка и текст); focus — только `:focus-visible`; disabled — атрибут `disabled`.
+- Accent используется только для primary action, focus и selected state.
+- При программной смене значения `.range` или `.color-control` вызывать `syncRangeFill(input)` / `syncColorControl(input)` из `app.js`.
+
+Новые элементы интерфейса собирать из этих tokens и компонентов. Новый локальный стиль допустим только для элемента с действительно уникальной функцией. Не вводить новые цвета, радиусы, высоты controls и отступы вне шкалы.
+
 ## Development rules
 
 Разрабатывать поэтапно.

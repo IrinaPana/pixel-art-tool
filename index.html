@@ -9,6 +9,45 @@
     <script src="app.js" defer></script>
 </head>
 <body>
+    <svg class="icon-sprite" aria-hidden="true" focusable="false">
+        <symbol id="icon-rotate-left" viewBox="0 0 16 16">
+            <path d="M2 8a6 6 0 1 0 6-6 6.5 6.5 0 0 0-4.49 1.83L2 5.33"/>
+            <path d="M2 2v3.33h3.33"/>
+        </symbol>
+        <symbol id="icon-rotate-right" viewBox="0 0 16 16">
+            <path d="M14 8a6 6 0 1 1-6-6c1.68 0 3.29.67 4.49 1.83L14 5.33"/>
+            <path d="M14 2v3.33h-3.33"/>
+        </symbol>
+        <symbol id="icon-flip-horizontal" viewBox="0 0 16 16">
+            <path d="M2 4.67 5.33 8 2 11.33z"/>
+            <path d="M14 4.67 10.67 8 14 11.33z"/>
+            <path d="M8 1.33v1.34M8 5.33v1.34M8 9.33v1.34M8 13.33v1.34"/>
+        </symbol>
+        <symbol id="icon-flip-vertical" viewBox="0 0 16 16">
+            <path d="M4.67 2 8 5.33 11.33 2z"/>
+            <path d="M4.67 14 8 10.67 11.33 14z"/>
+            <path d="M1.33 8h1.34M5.33 8h1.34M9.33 8h1.34M13.33 8h1.34"/>
+        </symbol>
+        <symbol id="icon-lock" viewBox="0 0 16 16">
+            <rect x="2" y="7.33" width="12" height="7.33" rx="1.33"/>
+            <path d="M4.67 7.33V4.67a3.33 3.33 0 0 1 6.67 0v2.66"/>
+        </symbol>
+        <symbol id="icon-minus" viewBox="0 0 16 16">
+            <path d="M3.33 8h9.34"/>
+        </symbol>
+        <symbol id="icon-plus" viewBox="0 0 16 16">
+            <path d="M8 3.33v9.34M3.33 8h9.34"/>
+        </symbol>
+        <!-- anchor: стрелка вверх, направление задаётся transform: rotate(...) на <svg> -->
+        <symbol id="icon-arrow" viewBox="0 0 16 16">
+            <path d="M3.33 8 8 3.33 12.67 8"/>
+            <path d="M8 12.67V3.33"/>
+        </symbol>
+        <symbol id="icon-dot" viewBox="0 0 16 16">
+            <circle cx="8" cy="8" r="2" fill="currentColor" stroke="none"/>
+        </symbol>
+    </svg>
+
     <header class="toolbar">
         <button id="open-button" type="button">Open</button>
         <button id="export-button" type="button" class="primary" disabled>Export PNG</button>
@@ -161,5 +200,7 @@
             <p id="status" class="status" role="status" aria-live="polite"></p>
         </aside>
     </main>
+
+    <div id="tooltip" class="tooltip" aria-hidden="true" hidden></div>
 </body>
 </html>

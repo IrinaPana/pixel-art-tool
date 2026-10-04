@@ -51,7 +51,9 @@ body {
     border-bottom: 1px solid var(--border);
 }
 
-button {
+/* Legacy UI. Тип элемента в :where(), чтобы классы design system имели приоритет. */
+
+:where(button) {
     font: inherit;
     padding: 6px 14px;
     border: 1px solid var(--border);
@@ -61,10 +63,10 @@ button {
     cursor: pointer;
 }
 
-button:hover:not(:disabled) { border-color: var(--muted); }
-button:disabled { opacity: 0.45; cursor: default; }
+:where(button):hover:not(:disabled) { border-color: var(--muted); }
+:where(button):disabled { opacity: 0.45; cursor: default; }
 
-button.primary {
+:where(button).primary {
     background: var(--accent);
     border-color: var(--accent);
     color: var(--accent-text);
@@ -172,9 +174,9 @@ button.primary {
     cursor: pointer;
 }
 
-input[type="checkbox"],
-input[type="radio"],
-input[type="range"] {
+:where(input)[type="checkbox"],
+:where(input)[type="radio"],
+:where(input)[type="range"] {
     accent-color: var(--accent);
     margin: 0;
 }
@@ -260,7 +262,7 @@ input[type="range"] {
 
 .anchor-grid button { padding: 4px 0; }
 
-input[type="number"] {
+:where(input)[type="number"] {
     width: 100%;
     font: inherit;
     padding: 5px 8px;
@@ -270,8 +272,8 @@ input[type="number"] {
     color: var(--text);
 }
 
-input[type="number"]:focus { outline: none; border-color: var(--accent); }
-input[type="number"][aria-invalid="true"] { border-color: var(--error); }
+:where(input)[type="number"]:focus { outline: none; border-color: var(--accent); }
+:where(input)[type="number"][aria-invalid="true"] { border-color: var(--error); }
 
 .hint,
 .field-error {
@@ -310,5 +312,768 @@ input[type="number"][aria-invalid="true"] { border-color: var(--error); }
     .panel {
         border-left: none;
         border-top: 1px solid var(--border);
+    }
+}
+
+/* ==========================================================================
+   Design system — tokens
+   ========================================================================== */
+
+:root {
+    /* Colors */
+    --color-app-bg: #f5f5f4;
+    --color-workspace-bg: #ececea;
+    --color-panel-bg: #fafafa;
+    --color-control-bg: #ffffff;
+
+    --color-control-hover: #f5f5f5;
+    --color-control-active: #eeeeec;
+
+    --color-text: #202020;
+    --color-text-secondary: #71717a;
+    --color-text-muted: #a1a1aa;
+
+    --color-border: #ddddda;
+    --color-border-strong: #c9c9c5;
+
+    --color-accent: #2563eb;
+    --color-accent-hover: #1d4ed8;
+    --color-accent-soft: #eff6ff;
+    --color-on-accent: #ffffff;
+
+    --color-warning: #b45309;
+    --color-warning-bg: #fffbeb;
+
+    --color-error: #b91c1c;
+    --color-error-bg: #fef2f2;
+
+    --color-checker-light: #f3f3f3;
+    --color-checker-dark: #dddddd;
+
+    --color-tooltip-bg: #27272a;
+    --color-tooltip-text: #ffffff;
+
+    /* Typography */
+    --font-ui: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+    --font-size-xs: 11px;
+    --font-size-sm: 12px;
+    --font-size-md: 13px;
+    --font-size-lg: 14px;
+
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+
+    /* Spacing */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+
+    /* Sizes */
+    --control-height: 32px;
+    --control-height-small: 28px;
+    --toolbar-height: 48px;
+    --bottom-bar-height: 36px;
+    --sidebar-width: 296px;
+    --label-width: 72px;
+    --input-number-width: 64px;
+    --input-narrow-width: 56px;
+    --icon-size: 16px;
+    --tooltip-max-width: 240px;
+
+    /* Radii */
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+
+    /* States */
+    --border-width: 1px;
+    --focus-ring: 0 0 0 2px var(--color-accent-soft);
+    --transition-fast: 120ms ease;
+    --disabled-opacity: 0.55;
+}
+
+/* ==========================================================================
+   Design system — components
+   ========================================================================== */
+
+/* Система только светлая. :root текущего UI объявляет `light dark` (наследуется),
+   поэтому компоненты и корневой layout задают light явно: native-части
+   controls (checkbox, список select, color picker, scrollbar) остаются светлыми. */
+.app,
+.button,
+.icon-button,
+.input,
+.select,
+.range,
+.color-control,
+.checkbox,
+.tooltip,
+.inline-message {
+    color-scheme: light;
+}
+
+.icon-sprite {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+}
+
+/* ---------- Icon ---------- */
+
+.icon {
+    flex: none;
+    width: var(--icon-size);
+    height: var(--icon-size);
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* ---------- Button ---------- */
+
+.button,
+.icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    height: var(--control-height);
+    margin: 0;
+    border: var(--border-width) solid transparent;
+    border-radius: var(--radius-md);
+    background-color: transparent;
+    color: var(--color-text);
+    font-family: var(--font-ui);
+    font-size: var(--font-size-md);
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+        background-color var(--transition-fast),
+        border-color var(--transition-fast),
+        color var(--transition-fast),
+        box-shadow var(--transition-fast);
+}
+
+.button {
+    gap: var(--space-2);
+    padding: 0 var(--space-3);
+    font-weight: var(--font-weight-medium);
+}
+
+/* Primary — только Export PNG */
+.button--primary {
+    border-color: var(--color-accent);
+    background-color: var(--color-accent);
+    color: var(--color-on-accent);
+}
+
+.button--primary:hover {
+    border-color: var(--color-accent-hover);
+    background-color: var(--color-accent-hover);
+}
+
+.button--secondary {
+    border-color: var(--color-border);
+    background-color: var(--color-control-bg);
+}
+
+.button--secondary:hover { border-color: var(--color-border); background-color: var(--color-control-hover); }
+.button--secondary:active { background-color: var(--color-control-active); }
+
+.button--ghost:hover { border-color: transparent; background-color: var(--color-control-hover); }
+.button--ghost:active { background-color: var(--color-control-active); }
+
+/* ---------- Icon button ---------- */
+
+.icon-button {
+    width: var(--control-height);
+    padding: 0;
+    border-color: var(--color-border);
+    background-color: var(--color-control-bg);
+}
+
+.icon-button:hover { border-color: var(--color-border); background-color: var(--color-control-hover); }
+.icon-button:active { background-color: var(--color-control-active); }
+
+.icon-button--small {
+    width: var(--control-height-small);
+    height: var(--control-height-small);
+}
+
+/* ---------- Selected state (toggle, pipette, lock, anchor) ---------- */
+
+.button[aria-pressed="true"],
+.icon-button[aria-pressed="true"] {
+    border-color: var(--color-accent);
+    background-color: var(--color-accent-soft);
+    color: var(--color-accent);
+}
+
+/* ---------- Input ---------- */
+
+.input,
+.select {
+    height: var(--control-height);
+    margin: 0;
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-md);
+    background-color: var(--color-control-bg);
+    color: var(--color-text);
+    font-family: var(--font-ui);
+    font-size: var(--font-size-md);
+    transition:
+        border-color var(--transition-fast),
+        box-shadow var(--transition-fast);
+}
+
+.input {
+    width: 100%;
+    min-width: 0;
+    padding: 0 var(--space-2);
+}
+
+.input:hover,
+.select:hover { border-color: var(--color-border-strong); }
+
+.input--number {
+    width: var(--input-number-width);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    appearance: textfield;
+    -moz-appearance: textfield;
+}
+
+.input--number::-webkit-inner-spin-button,
+.input--number::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.input--narrow { width: var(--input-narrow-width); }
+
+.input[aria-invalid="true"] { border-color: var(--color-error); }
+
+/* ---------- Select ---------- */
+
+/* Chevron: stroke = --color-text-secondary (переменные внутри data URI не работают). */
+.select {
+    width: 100%;
+    min-width: 0;
+    padding: 0 calc(var(--space-2) * 2 + 12px) 0 var(--space-2);
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%2371717a' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right var(--space-2) center;
+    background-size: 12px 12px;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+
+/* ---------- Slider ---------- */
+
+/* --range-fill выставляет syncRangeFill() в app.js. */
+.range {
+    --range-fill: 0%;
+    --range-track: 4px;
+    --range-thumb: 14px;
+    width: 100%;
+    min-width: 0;
+    height: var(--range-thumb);
+    margin: 0;
+    background: transparent;
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+}
+
+.range::-webkit-slider-runnable-track {
+    height: var(--range-track);
+    border-radius: calc(var(--range-track) / 2);
+    background: linear-gradient(to right,
+        var(--color-accent) var(--range-fill),
+        var(--color-border-strong) var(--range-fill));
+}
+
+.range::-moz-range-track {
+    height: var(--range-track);
+    border-radius: calc(var(--range-track) / 2);
+    background: linear-gradient(to right,
+        var(--color-accent) var(--range-fill),
+        var(--color-border-strong) var(--range-fill));
+}
+
+.range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    box-sizing: border-box;
+    width: var(--range-thumb);
+    height: var(--range-thumb);
+    margin-top: calc((var(--range-track) - var(--range-thumb)) / 2);
+    border: var(--border-width) solid var(--color-accent);
+    border-radius: 50%;
+    background: var(--color-control-bg);
+    transition: box-shadow var(--transition-fast);
+}
+
+.range::-moz-range-thumb {
+    box-sizing: border-box;
+    width: var(--range-thumb);
+    height: var(--range-thumb);
+    border: var(--border-width) solid var(--color-accent);
+    border-radius: 50%;
+    background: var(--color-control-bg);
+    transition: box-shadow var(--transition-fast);
+}
+
+.range:focus-visible { outline: none; }
+.range:focus-visible::-webkit-slider-thumb { box-shadow: var(--focus-ring); }
+.range:focus-visible::-moz-range-thumb { box-shadow: var(--focus-ring); }
+
+/* ---------- Color control ---------- */
+
+/* Native input растянут прозрачным слоем поверх control: клик открывает picker.
+   Swatch и hex обновляет syncColorControl() в app.js. */
+.color-control {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex: 1;
+    min-width: 0;
+    height: var(--control-height);
+    padding: 0 var(--space-2);
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-md);
+    background-color: var(--color-control-bg);
+    color: var(--color-text);
+    font-size: var(--font-size-md);
+    cursor: pointer;
+    transition:
+        border-color var(--transition-fast),
+        box-shadow var(--transition-fast);
+}
+
+.color-control:hover { border-color: var(--color-border-strong); }
+
+.color-control input[type="color"] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.color-swatch {
+    flex: none;
+    width: var(--icon-size);
+    height: var(--icon-size);
+    border: var(--border-width) solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+}
+
+.color-value {
+    overflow: hidden;
+    font-variant-numeric: tabular-nums;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+/* ---------- Checkbox ---------- */
+
+.checkbox {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--color-text);
+    font-size: var(--font-size-md);
+    cursor: pointer;
+}
+
+.checkbox input {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    margin: 0;
+    accent-color: var(--color-accent);
+    cursor: pointer;
+}
+
+.checkbox input:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+}
+
+/* ---------- Focus ---------- */
+
+.button:focus-visible,
+.icon-button:focus-visible,
+.input:focus-visible,
+.select:focus-visible,
+.color-control:has(input:focus-visible) {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: var(--focus-ring);
+}
+
+/* ---------- Disabled ---------- */
+
+.button:disabled,
+.icon-button:disabled,
+.input:disabled,
+.select:disabled,
+.range:disabled,
+.checkbox input:disabled,
+.color-control:has(input:disabled) {
+    opacity: var(--disabled-opacity);
+    cursor: default;
+    pointer-events: none;
+}
+
+.checkbox:has(input:disabled) {
+    color: var(--color-text-muted);
+    cursor: default;
+}
+
+/* ---------- Section heading ---------- */
+
+.section-heading {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+/* ---------- Divider ---------- */
+
+.divider {
+    height: var(--border-width);
+    margin: var(--space-5) 0;
+    border: 0;
+    background-color: var(--color-border);
+}
+
+/* ---------- Help text & inline message ---------- */
+
+.help-text {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+.inline-message {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    margin: 0;
+    padding: var(--space-2);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    line-height: 1.4;
+}
+
+.help-text:empty,
+.inline-message:empty { display: none; }
+
+.inline-message--error {
+    background-color: var(--color-error-bg);
+    color: var(--color-error);
+}
+
+.inline-message--warning {
+    background-color: var(--color-warning-bg);
+    color: var(--color-warning);
+}
+
+/* Иконка warning: маска, цвет = currentColor. */
+.inline-message--warning::before {
+    content: "";
+    flex: none;
+    width: 14px;
+    height: 14px;
+    margin-top: 1px;
+    background-color: currentColor;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2 14.5 13.5h-13z'/%3E%3Cpath d='M8 6.5v3M8 11.75v.01'/%3E%3C/svg%3E") no-repeat center / contain;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2 14.5 13.5h-13z'/%3E%3Cpath d='M8 6.5v3M8 11.75v.01'/%3E%3C/svg%3E") no-repeat center / contain;
+}
+
+/* ---------- Tooltip ---------- */
+
+/* Позиционирует app.js; только для icon-only controls (data-tooltip).
+   Ширина не больше окна за вычетом отступов 4px с каждой стороны (TOOLTIP_MARGIN). */
+.tooltip {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 10;
+    max-width: min(var(--tooltip-max-width), calc(100vw - 2 * var(--space-1)));
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-tooltip-bg);
+    color: var(--color-tooltip-text);
+    font-family: var(--font-ui);
+    font-size: var(--font-size-sm);
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+    pointer-events: none;
+}
+
+/* ==========================================================================
+   Design system — layouts
+   ========================================================================== */
+
+/* Корневой grid: toolbar / workspace / bottom bar. Ставится на <body>. */
+.app {
+    display: grid;
+    grid-template-rows: var(--toolbar-height) minmax(0, 1fr) var(--bottom-bar-height);
+    overflow: hidden;
+    background-color: var(--color-app-bg);
+    color: var(--color-text);
+    font-family: var(--font-ui);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-normal);
+    line-height: 1.4;
+}
+
+/* ---------- Toolbar ---------- */
+
+.app-toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: 0 var(--space-4);
+    border-bottom: var(--border-width) solid var(--color-border);
+    background-color: var(--color-panel-bg);
+}
+
+.app-toolbar-title {
+    margin: 0;
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    white-space: nowrap;
+}
+
+.app-toolbar-actions {
+    display: flex;
+    gap: var(--space-2);
+    margin-left: auto;
+}
+
+/* ---------- Workspace & preview ---------- */
+
+.app-workspace {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--sidebar-width);
+    min-height: 0;
+}
+
+.app-preview {
+    position: relative;
+    display: flex;
+    overflow: auto;
+    min-width: 0;
+    min-height: 0;
+    background-color: var(--color-workspace-bg);
+}
+
+.app-preview.is-dragging {
+    outline: 2px dashed var(--color-accent);
+    outline-offset: calc(var(--space-2) * -1);
+}
+
+/* margin: auto центрирует и не обрезает при переполнении (скролл) */
+.app-preview-stage {
+    margin: auto;
+    padding: var(--space-5);
+}
+
+/* Рамка через box-shadow: не меняет размер canvas, заданный из JS.
+   Без radius: углы — это пиксели изображения. */
+.app-preview-canvas {
+    display: block;
+    image-rendering: crisp-edges;
+    image-rendering: pixelated;
+    box-shadow: 0 0 0 var(--border-width) var(--color-border-strong);
+    background-color: var(--color-checker-light);
+    background-image: conic-gradient(
+        var(--color-checker-dark) 25%, transparent 0 50%,
+        var(--color-checker-dark) 0 75%, transparent 0
+    );
+    background-size: 16px 16px; /* клетка 8 × 8 px */
+}
+
+.app-preview-empty {
+    margin: auto;
+    color: var(--color-text-secondary);
+}
+
+/* ---------- Sidebar ---------- */
+
+.app-sidebar {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: var(--space-4);
+    border-left: var(--border-width) solid var(--color-border);
+    background-color: var(--color-panel-bg);
+    overflow-y: auto;
+}
+
+.sidebar-section,
+.control-fieldset {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-width: 0;
+}
+
+/* fieldset группы настроек; disabled гасит подписи, controls гасятся сами */
+.control-fieldset {
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.control-fieldset:disabled,
+.control-fieldset:disabled :is(.value-label, .value-separator, .unit) {
+    color: var(--color-text-muted);
+}
+
+/* ---------- Control rows ---------- */
+
+/* Label + control */
+.control-row {
+    display: grid;
+    grid-template-columns: var(--label-width) minmax(0, 1fr);
+    gap: var(--space-2);
+    align-items: center;
+}
+
+/* Для control выше одной строки (anchor picker): label по первой строке */
+.control-row--top { align-items: start; }
+.control-row--top .control-label { line-height: var(--control-height); }
+
+.control-group {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+}
+
+/* Slider: label, track, значение фиксированной ширины */
+.slider-row {
+    display: grid;
+    grid-template-columns: var(--label-width) minmax(0, 1fr) var(--control-height);
+    gap: var(--space-2);
+    align-items: center;
+}
+
+.slider-value {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Compact value row: W [ ] × H [ ] [lock]; button-row — ряд icon buttons */
+.value-row,
+.value-field,
+.button-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.value-label,
+.value-separator,
+.unit { color: var(--color-text-secondary); }
+
+/* 3 × 3 anchors */
+.anchor-picker {
+    display: grid;
+    grid-template-columns: repeat(3, var(--control-height));
+    gap: var(--space-1);
+}
+
+/* ---------- Bottom bar ---------- */
+
+.app-bottom-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 0;
+    padding: 0 var(--space-3);
+    border-top: var(--border-width) solid var(--color-border);
+    background-color: var(--color-panel-bg);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+.bottom-bar-size {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.bottom-bar-file {
+    max-width: 240px;
+    overflow: hidden;
+    color: var(--color-text-muted);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bottom-bar-size:empty,
+.bottom-bar-file:empty { display: none; }
+
+.bottom-bar-status {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bottom-bar-status.is-error { color: var(--color-error); }
+
+/* [−] 400% [+] */
+.zoom-control {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    margin-left: auto;
+}
+
+.zoom-value {
+    min-width: 40px;
+    color: var(--color-text);
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Narrow screens ---------- */
+
+@media (max-width: 720px) {
+    .app-workspace {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: minmax(0, 1fr) auto;
+    }
+    /* Панель не выше 45vh, прокручивается сама: preview всегда получает
+       оставшуюся высоту, а не 0 строки minmax(0, 1fr). */
+    .app-sidebar {
+        max-height: 45vh;
+        border-left: none;
+        border-top: var(--border-width) solid var(--color-border);
     }
 }

@@ -756,6 +756,92 @@ function reset() {
     reprocess();
 }
 
+// ---------- UI components ----------
+
+const TOOLTIP_DELAY = 450; // ms
+const TOOLTIP_GAP = 6;     // px между элементом и tooltip
+const TOOLTIP_MARGIN = 4;  // px минимальный отступ от края окна
+const tooltipElement = document.getElementById('tooltip');
+let tooltipTimer = 0;
+
+// Заполненная часть slider (.range). Вызывать и после программной смены value.
+function syncRangeFill(input) {
+    const min = Number(input.min) || 0;
+    const max = input.max === '' ? 100 : Number(input.max);
+    const fill = max > min ? (Number(input.value) - min) / (max - min) * 100 : 0;
+    input.style.setProperty('--range-fill', `${fill}%`);
+}
+
+// Swatch и hex у .color-control. Вызывать и после программной смены value.
+function syncColorControl(input) {
+    const control = input.closest('.color-control');
+    control.querySelector('.color-swatch').style.backgroundColor = input.value;
+    control.querySelector('.color-value').textContent = input.value.toUpperCase();
+}
+
+// Ограничивает координату диапазоном [TOOLTIP_MARGIN, limit - size - TOOLTIP_MARGIN].
+// Если подсказка больше окна, побеждает начальный край (TOOLTIP_MARGIN).
+function clampTooltipCoordinate(value, size, limit) {
+    return Math.max(TOOLTIP_MARGIN, Math.min(value, limit - size - TOOLTIP_MARGIN));
+}
+
+// Один fixed-элемент для всех [data-tooltip]: под элементом, при нехватке
+// места — над ним; координаты зажаты в окно по обеим осям, поэтому подсказка
+// не обрезается прокруткой sidebar и краями окна. Ширину ограничивает CSS (max-width).
+function showTooltip(target) {
+    tooltipElement.textContent = target.dataset.tooltip;
+    tooltipElement.style.left = '0px';
+    tooltipElement.style.top = '0px';
+    tooltipElement.hidden = false;
+
+    const rect = target.getBoundingClientRect();
+    const tip = tooltipElement.getBoundingClientRect();
+    let top = rect.bottom + TOOLTIP_GAP;
+    if (top + tip.height > window.innerHeight - TOOLTIP_MARGIN) top = rect.top - TOOLTIP_GAP - tip.height;
+    top = clampTooltipCoordinate(top, tip.height, window.innerHeight);
+    const left = clampTooltipCoordinate(rect.left + (rect.width - tip.width) / 2, tip.width, window.innerWidth);
+
+    tooltipElement.style.left = `${left}px`;
+    tooltipElement.style.top = `${top}px`;
+}
+
+function scheduleTooltip(target) {
+    hideTooltip();
+    tooltipTimer = setTimeout(() => showTooltip(target), TOOLTIP_DELAY);
+}
+
+function hideTooltip() {
+    clearTimeout(tooltipTimer);
+    tooltipElement.hidden = true;
+}
+
+function initUiComponents() {
+    document.querySelectorAll('.range').forEach(syncRangeFill);
+    document.querySelectorAll('.color-control input[type="color"]').forEach(syncColorControl);
+
+    document.addEventListener('input', (event) => {
+        const target = event.target;
+        if (target.matches('.range')) syncRangeFill(target);
+        else if (target.matches('.color-control input[type="color"]')) syncColorControl(target);
+    });
+
+    document.querySelectorAll('[data-tooltip]').forEach((element) => {
+        element.addEventListener('mouseenter', () => scheduleTooltip(element));
+        element.addEventListener('mouseleave', hideTooltip);
+        element.addEventListener('focus', () => {
+            if (element.matches(':focus-visible')) scheduleTooltip(element);
+        });
+        element.addEventListener('blur', hideTooltip);
+        element.addEventListener('pointerdown', hideTooltip);
+    });
+    window.addEventListener('scroll', hideTooltip, true); // в т. ч. прокрутка sidebar и preview
+    // Escape убирает подсказку, фокус остаётся на элементе. Отдельный listener:
+    // существующий обработчик Escape (выход из пипетки) не меняется.
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') hideTooltip();
+    });
+}
+
 // ---------- Events ----------
 
 els.openButton.addEventListener('click', () => els.fileInput.click());
@@ -872,4 +958,5 @@ els.previewArea.addEventListener('drop', (event) => {
     loadFile(event.dataTransfer.files[0]);
 });
 
+initUiComponents();
 render();
