@@ -8,7 +8,7 @@
     <script src="image-processing.js" defer></script>
     <script src="app.js" defer></script>
 </head>
-<body>
+<body class="app">
     <svg class="icon-sprite" aria-hidden="true" focusable="false">
         <symbol id="icon-rotate-left" viewBox="0 0 16 16">
             <path d="M2 8a6 6 0 1 0 6-6 6.5 6.5 0 0 0-4.49 1.83L2 5.33"/>
@@ -48,22 +48,25 @@
         </symbol>
     </svg>
 
-    <header class="toolbar">
-        <button id="open-button" type="button">Open</button>
-        <button id="export-button" type="button" class="primary" disabled>Export PNG</button>
-        <button id="reset-button" type="button" disabled>Reset</button>
+    <header class="app-toolbar">
+        <h1 class="app-toolbar-title">Pixel Art Image Tool</h1>
+        <div class="app-toolbar-actions">
+            <button id="open-button" type="button">Open</button>
+            <button id="export-button" type="button" class="primary" disabled>Export PNG</button>
+            <button id="reset-button" type="button" disabled>Reset</button>
+        </div>
         <input id="file-input" type="file" accept="image/png,image/jpeg" hidden>
     </header>
 
-    <main class="workspace">
-        <section id="preview-area" class="preview-area" aria-label="Preview">
-            <div class="preview-stage">
-                <canvas id="preview-canvas"></canvas>
+    <main class="app-workspace">
+        <section id="preview-area" class="app-preview" aria-label="Preview">
+            <div class="app-preview-stage">
+                <canvas id="preview-canvas" class="app-preview-canvas"></canvas>
             </div>
-            <p class="empty-hint">Open or drop a PNG or JPEG image</p>
+            <p class="app-preview-empty">Open or drop a PNG or JPEG image</p>
         </section>
 
-        <aside class="panel">
+        <aside class="app-sidebar">
             <section class="panel-group">
                 <h2>Zoom</h2>
                 <div class="segmented" role="group" aria-label="Zoom">
@@ -200,6 +203,8 @@
             <p id="status" class="status" role="status" aria-live="polite"></p>
         </aside>
     </main>
+
+    <footer class="app-bottom-bar"></footer>
 
     <div id="tooltip" class="tooltip" aria-hidden="true" hidden></div>
 </body>

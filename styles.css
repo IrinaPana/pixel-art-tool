@@ -9,21 +9,6 @@
     --error: #dc2626;
     --checker-light: #ffffff;
     --checker-dark: #d4d4d8;
-    color-scheme: light dark;
-}
-
-@media (prefers-color-scheme: dark) {
-    :root {
-        --bg: #18181b;
-        --surface: #232326;
-        --border: #34343a;
-        --text: #f4f4f5;
-        --muted: #a1a1aa;
-        --accent: #3b82f6;
-        --error: #f87171;
-        --checker-light: #3f3f46;
-        --checker-dark: #27272a;
-    }
 }
 
 * { box-sizing: border-box; }
@@ -32,24 +17,6 @@
 [hidden] { display: none !important; }
 
 html, body { height: 100%; margin: 0; }
-
-body {
-    display: grid;
-    grid-template-rows: auto 1fr;
-    background: var(--bg);
-    color: var(--text);
-    font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
-}
-
-/* Toolbar */
-
-.toolbar {
-    display: flex;
-    gap: 8px;
-    padding: 10px 16px;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-}
 
 /* Legacy UI. Тип элемента в :where(), чтобы классы design system имели приоритет. */
 
@@ -72,67 +39,11 @@ body {
     color: var(--accent-text);
 }
 
-/* Workspace */
+/* Panel groups — legacy-содержимое .app-sidebar до перестройки sidebar.
+   Специфичность выше .status { margin: 0 } ниже по файлу. */
 
-.workspace {
-    display: grid;
-    grid-template-columns: 1fr 240px;
-    min-height: 0;
-}
-
-.preview-area {
-    position: relative;
-    display: flex;
-    overflow: auto;
-    min-width: 0;
-    min-height: 0;
-}
-
-.preview-area.is-dragging {
-    outline: 2px dashed var(--accent);
-    outline-offset: -8px;
-}
-
-/* margin: auto центрирует и не обрезает при переполнении (скролл) */
-.preview-stage {
-    margin: auto;
-    padding: 24px;
-}
-
-#preview-canvas {
-    display: block;
-    image-rendering: crisp-edges;
-    image-rendering: pixelated;
-    background-color: var(--checker-light);
-    background-image: conic-gradient(
-        var(--checker-dark) 25%, transparent 0 50%,
-        var(--checker-dark) 0 75%, transparent 0
-    );
-    background-size: 16px 16px;
-}
-
-#preview-canvas.is-picking { cursor: crosshair; }
-
-.preview-area:not(.has-image) .preview-stage { display: none; }
-
-.empty-hint {
-    margin: auto;
-    color: var(--muted);
-}
-
-.preview-area.has-image .empty-hint { display: none; }
-
-/* Panel */
-
-.panel {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    padding: 16px;
-    background: var(--surface);
-    border-left: 1px solid var(--border);
-    overflow: auto;
-}
+.panel-group + .panel-group,
+.panel-group + .status { margin-top: var(--space-5); }
 
 .panel-group h2 {
     margin: 0 0 8px;
@@ -304,17 +215,6 @@ body {
 .status:empty { display: none; }
 .status.is-error { color: var(--error); }
 
-@media (max-width: 720px) {
-    .workspace {
-        grid-template-columns: 1fr;
-        grid-template-rows: 1fr auto;
-    }
-    .panel {
-        border-left: none;
-        border-top: 1px solid var(--border);
-    }
-}
-
 /* ==========================================================================
    Design system — tokens
    ========================================================================== */
@@ -400,9 +300,9 @@ body {
    Design system — components
    ========================================================================== */
 
-/* Система только светлая. :root текущего UI объявляет `light dark` (наследуется),
-   поэтому компоненты и корневой layout задают light явно: native-части
-   controls (checkbox, список select, color picker, scrollbar) остаются светлыми. */
+/* Система только светлая: компоненты и корневой layout задают light явно,
+   native-части controls (checkbox, список select, color picker, scrollbar)
+   остаются светлыми. */
 .app,
 .button,
 .icon-button,
@@ -835,10 +735,16 @@ body {
    Design system — layouts
    ========================================================================== */
 
-/* Корневой grid: toolbar / workspace / bottom bar. Ставится на <body>. */
+/* Корневой grid: toolbar / workspace / bottom bar. Ставится на <body>.
+   Занимает ровно окно; страница не прокручивается — скроллятся только
+   preview и sidebar. Колонка minmax(0, 1fr): min-content toolbar
+   не растягивает layout шире окна. */
 .app {
     display: grid;
     grid-template-rows: var(--toolbar-height) minmax(0, 1fr) var(--bottom-bar-height);
+    grid-template-columns: minmax(0, 1fr);
+    width: 100vw;
+    height: 100vh;
     overflow: hidden;
     background-color: var(--color-app-bg);
     color: var(--color-text);
@@ -859,30 +765,37 @@ body {
     background-color: var(--color-panel-bg);
 }
 
+/* При нехватке ширины сжимается заголовок, кнопки остаются в одну строку */
 .app-toolbar-title {
+    min-width: 0;
     margin: 0;
+    overflow: hidden;
     font-size: var(--font-size-lg);
     font-weight: var(--font-weight-semibold);
+    text-overflow: ellipsis;
     white-space: nowrap;
 }
 
 .app-toolbar-actions {
     display: flex;
+    flex: none;
     gap: var(--space-2);
     margin-left: auto;
 }
 
 /* ---------- Workspace & preview ---------- */
 
+/* Preview забирает всё место, sidebar фиксированной ширины справа */
 .app-workspace {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) var(--sidebar-width);
+    display: flex;
+    min-width: 0;
     min-height: 0;
 }
 
 .app-preview {
     position: relative;
     display: flex;
+    flex: 1 1 auto;
     overflow: auto;
     min-width: 0;
     min-height: 0;
@@ -920,15 +833,24 @@ body {
     color: var(--color-text-secondary);
 }
 
+.app-preview-canvas.is-picking { cursor: crosshair; }
+
+/* has-image ставит render() в app.js */
+.app-preview:not(.has-image) .app-preview-stage { display: none; }
+.app-preview.has-image .app-preview-empty { display: none; }
+
 /* ---------- Sidebar ---------- */
 
+/* Не сжимается и не растягивается; при нехватке высоты скроллится сам */
 .app-sidebar {
     display: flex;
+    flex: 0 0 var(--sidebar-width);
     flex-direction: column;
     min-height: 0;
     padding: var(--space-4);
     border-left: var(--border-width) solid var(--color-border);
     background-color: var(--color-panel-bg);
+    overflow-x: hidden;
     overflow-y: auto;
 }
 
@@ -1060,20 +982,4 @@ body {
     color: var(--color-text);
     text-align: center;
     font-variant-numeric: tabular-nums;
-}
-
-/* ---------- Narrow screens ---------- */
-
-@media (max-width: 720px) {
-    .app-workspace {
-        grid-template-columns: minmax(0, 1fr);
-        grid-template-rows: minmax(0, 1fr) auto;
-    }
-    /* Панель не выше 45vh, прокручивается сама: preview всегда получает
-       оставшуюся высоту, а не 0 строки minmax(0, 1fr). */
-    .app-sidebar {
-        max-height: 45vh;
-        border-left: none;
-        border-top: var(--border-width) solid var(--color-border);
-    }
 }
