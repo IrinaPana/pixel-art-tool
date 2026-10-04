@@ -232,6 +232,40 @@ input[type="range"] {
     gap: 6px;
 }
 
+#resize-options { margin-top: 0; }
+
+.segmented.segmented-2 { grid-template-columns: repeat(2, 1fr); }
+
+.size-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+input[type="number"] {
+    width: 100%;
+    font: inherit;
+    padding: 5px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text);
+}
+
+input[type="number"]:focus { outline: none; border-color: var(--accent); }
+input[type="number"][aria-invalid="true"] { border-color: var(--error); }
+
+.hint,
+.field-error {
+    margin: 0;
+    font-size: 12px;
+}
+
+.hint { color: var(--muted); }
+.field-error { color: var(--error); }
+.hint:empty,
+.field-error:empty { display: none; }
+
 .info {
     display: grid;
     grid-template-columns: auto 1fr;

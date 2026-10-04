@@ -76,6 +76,32 @@
             </section>
 
             <section class="panel-group">
+                <h2>Resize</h2>
+                <fieldset id="resize-options" class="options" disabled>
+                    <div class="segmented segmented-2" role="group" aria-label="Resize method">
+                        <button type="button" data-resize-method="nearest">Nearest</button>
+                        <button type="button" data-resize-method="area">Area</button>
+                    </div>
+                    <p id="resize-note" class="hint"></p>
+                    <div class="size-row">
+                        <label class="field">
+                            <span class="field-label">Width, px</span>
+                            <input id="resize-width" type="number" min="1" step="1" inputmode="numeric" aria-describedby="resize-error">
+                        </label>
+                        <label class="field">
+                            <span class="field-label">Height, px</span>
+                            <input id="resize-height" type="number" min="1" step="1" inputmode="numeric" aria-describedby="resize-error">
+                        </label>
+                    </div>
+                    <p id="resize-error" class="field-error" role="alert"></p>
+                    <label class="check">
+                        <input id="resize-keep-ratio" type="checkbox" checked>
+                        Preserve aspect ratio
+                    </label>
+                </fieldset>
+            </section>
+
+            <section class="panel-group">
                 <h2>Image</h2>
                 <dl class="info">
                     <dt>File</dt>
