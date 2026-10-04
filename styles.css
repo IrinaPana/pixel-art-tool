@@ -4,34 +4,34 @@
 
 :root {
     /* Colors */
-    --color-app-bg: #f5f5f4;
-    --color-workspace-bg: #ececea;
-    --color-panel-bg: #fafafa;
-    --color-control-bg: #ffffff;
+    --color-app-bg: #f6f7f9;
+    --color-workspace-bg: #eef0f3;
 
-    --color-control-hover: #f5f5f5;
-    --color-control-active: #eeeeec;
+    --color-panel-bg: #ffffff;
+    --color-control-bg: #f8f9fb;
+    --color-control-hover: #f1f3f5;
+    --color-control-active: #e9ecf0;
 
-    --color-text: #202020;
-    --color-text-secondary: #71717a;
-    --color-text-muted: #a1a1aa;
+    --color-text: #18181b;
+    --color-text-secondary: #5f6670;
+    --color-text-muted: #9298a1;
 
-    --color-border: #ddddda;
-    --color-border-strong: #c9c9c5;
+    --color-border: #e1e4e8;
+    --color-border-strong: #cfd4da;
 
-    --color-accent: #2563eb;
-    --color-accent-hover: #1d4ed8;
-    --color-accent-soft: #eff6ff;
+    --color-accent: #4f46e5;
+    --color-accent-hover: #4338ca;
+    --color-accent-soft: #eef2ff;
     --color-on-accent: #ffffff;
 
-    --color-warning: #b45309;
-    --color-warning-bg: #fffbeb;
+    --color-warning: #a16207;
+    --color-warning-bg: #fefce8;
 
-    --color-error: #b91c1c;
-    --color-error-bg: #fef2f2;
+    --color-error: #b42318;
+    --color-error-bg: #fef3f2;
 
-    --color-checker-light: #f3f3f3;
-    --color-checker-dark: #dddddd;
+    --color-checker-light: #f2f3f5;
+    --color-checker-dark: #dde0e4;
 
     --color-tooltip-bg: #27272a;
     --color-tooltip-text: #ffffff;
@@ -39,14 +39,17 @@
     /* Typography */
     --font-ui: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 
-    --font-size-xs: 11px;
-    --font-size-sm: 12px;
-    --font-size-md: 13px;
-    --font-size-lg: 14px;
+    --font-size-sm: 12px;  /* labels, bottom bar, сообщения */
+    --font-size-md: 13px;  /* hex в color control */
+    --font-size-lg: 14px;  /* основной текст, controls, заголовки секций */
+    --font-size-xl: 16px;  /* название приложения */
 
     --font-weight-normal: 400;
     --font-weight-medium: 500;
     --font-weight-semibold: 600;
+
+    --line-height-base: 1.35;
+    --line-height-heading: 20px;
 
     /* Spacing */
     --space-1: 4px;
@@ -56,30 +59,34 @@
     --space-5: 24px;
 
     /* Sizes */
-    --control-height: 32px;
+    --control-height: 36px;
+    --control-height-compact: 32px;
     --control-height-small: 28px;
-    --toolbar-height: 48px;
+    --toolbar-height: 52px;
     --bottom-bar-height: 36px;
-    --sidebar-width: 296px;
-    --label-width: 72px;
+    --sidebar-width: 312px;
+    --segment-width: 40px;
     --input-number-width: 64px;
     --input-narrow-width: 56px;
     --icon-size: 16px;
+    --icon-size-lg: 20px;
+    --swatch-size: 18px;
+    --toggle-width: 30px;
+    --toggle-height: 18px;
+    --empty-icon-box: 40px;
     --tooltip-max-width: 240px;
-    --bottom-bar-file-width: 240px;
 
     /* Radii */
     --radius-sm: 4px;
     --radius-md: 6px;
-    --radius-lg: 8px;
+    --radius-lg: 8px;   /* controls */
 
     /* States */
     --border-width: 1px;
-    --focus-ring: 0 0 0 2px var(--color-accent-soft);
-    --selected-ring-inset: inset 0 0 0 var(--border-width) var(--color-accent);
+    --focus-ring: 0 0 0 3px var(--color-accent-soft);
     --focus-ring-inset:
         inset 0 0 0 var(--border-width) var(--color-accent),
-        inset 0 0 0 calc(var(--border-width) + 2px) var(--color-accent-soft);
+        inset 0 0 0 calc(var(--border-width) + 3px) var(--color-accent-soft);
     --transition-fast: 120ms ease;
     --disabled-opacity: 0.55;
 }
@@ -90,7 +97,7 @@
 
 * { box-sizing: border-box; }
 
-/* hidden сильнее display у layout-классов (.control-row, .value-row, .control-fieldset) */
+/* hidden сильнее display у layout-классов (.field, .control-fieldset) */
 [hidden] { display: none !important; }
 
 /* Страница не прокручивается: высоту задаёт grid .app, скроллятся только preview и sidebar */
@@ -110,6 +117,7 @@ html, body {
 .app,
 .button,
 .icon-button,
+.segmented-control,
 .input,
 .select,
 .range,
@@ -151,11 +159,11 @@ html, body {
     height: var(--control-height);
     margin: 0;
     border: var(--border-width) solid transparent;
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-lg);
     background-color: transparent;
     color: var(--color-text);
     font-family: var(--font-ui);
-    font-size: var(--font-size-md);
+    font-size: var(--font-size-lg);
     line-height: 1;
     white-space: nowrap;
     cursor: pointer;
@@ -184,6 +192,10 @@ html, body {
     background-color: var(--color-control-bg);
 }
 
+/* Ghost (Reset) — без рамки и фона: значения базового .button */
+
+.button--compact { height: var(--control-height-compact); }
+
 /* ---------- Icon button ---------- */
 
 .icon-button {
@@ -193,9 +205,49 @@ html, body {
     background-color: var(--color-control-bg);
 }
 
-.icon-button--small {
-    width: var(--control-height-small);
+/* ---------- Segmented control ---------- */
+
+/* Группа связанных кнопок: одна рамка и radius у контейнера, между кнопками —
+   separators 1px. Высота контейнера (с рамкой) = высота control, кнопки
+   тянутся по ней. width: max-content — не растягивается в колонке sidebar. */
+.segmented-control {
+    display: flex;
+    width: max-content;
+    height: var(--control-height);
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background-color: var(--color-control-bg);
+    overflow: hidden;
+}
+
+.segmented-control--small {
+    --segment-width: var(--control-height-small);
     height: var(--control-height-small);
+}
+
+.segmented-control__button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: var(--segment-width);
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background-color: transparent;
+    color: var(--color-text);
+    font-family: var(--font-ui);
+    font-size: inherit;
+    cursor: pointer;
+    transition:
+        background-color var(--transition-fast),
+        color var(--transition-fast),
+        box-shadow var(--transition-fast);
+}
+
+.segmented-control__button + .segmented-control__button {
+    border-left: var(--border-width) solid var(--color-border);
 }
 
 /* ---------- Anchor cell ---------- */
@@ -205,8 +257,8 @@ html, body {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: var(--control-height-small);
-    height: var(--control-height-small);
+    width: var(--control-height-compact);
+    height: var(--control-height-compact);
     margin: 0;
     padding: 0;
     border: 0;
@@ -227,12 +279,13 @@ html, body {
     height: var(--control-height);
     margin: 0;
     border: var(--border-width) solid var(--color-border);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-lg);
     background-color: var(--color-control-bg);
     color: var(--color-text);
     font-family: var(--font-ui);
-    font-size: var(--font-size-md);
+    font-size: var(--font-size-lg);
     transition:
+        background-color var(--transition-fast),
         border-color var(--transition-fast),
         box-shadow var(--transition-fast);
 }
@@ -240,12 +293,12 @@ html, body {
 .input {
     width: 100%;
     min-width: 0;
-    padding: 0 var(--space-2);
+    padding: 0 var(--space-3);
 }
 
 .input--number {
     width: var(--input-number-width);
-    text-align: right;
+    text-align: center;
     font-variant-numeric: tabular-nums;
     appearance: textfield;
     -moz-appearance: textfield;
@@ -265,12 +318,12 @@ html, body {
 .select {
     width: 100%;
     min-width: 0;
-    padding: 0 calc(var(--space-2) * 2 + 12px) 0 var(--space-2);
+    padding: 0 calc(var(--space-3) + 12px + var(--space-2)) 0 var(--space-3);
     appearance: none;
     -webkit-appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%2371717a' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%235f6670' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right var(--space-2) center;
+    background-position: right var(--space-3) center;
     background-size: 12px 12px;
     text-overflow: ellipsis;
     cursor: pointer;
@@ -317,7 +370,7 @@ html, body {
     margin-top: calc((var(--range-track) - var(--range-thumb)) / 2);
     border: var(--border-width) solid var(--color-accent);
     border-radius: 50%;
-    background: var(--color-control-bg);
+    background: var(--color-panel-bg);
     transition: box-shadow var(--transition-fast);
 }
 
@@ -327,14 +380,15 @@ html, body {
     height: var(--range-thumb);
     border: var(--border-width) solid var(--color-accent);
     border-radius: 50%;
-    background: var(--color-control-bg);
+    background: var(--color-panel-bg);
     transition: box-shadow var(--transition-fast);
 }
 
 /* ---------- Color control ---------- */
 
 /* Native input растянут прозрачным слоем поверх control: клик открывает picker.
-   Swatch и hex обновляет syncColorControl() в app.js. */
+   Swatch и hex обновляет syncColorControl() в app.js.
+   flex: 1 — занимает свободную ширину строки рядом с Pick. */
 .color-control {
     position: relative;
     display: flex;
@@ -343,14 +397,15 @@ html, body {
     flex: 1;
     min-width: 0;
     height: var(--control-height);
-    padding: 0 var(--space-2);
+    padding: 0 var(--space-3);
     border: var(--border-width) solid var(--color-border);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-lg);
     background-color: var(--color-control-bg);
     color: var(--color-text);
     font-size: var(--font-size-md);
     cursor: pointer;
     transition:
+        background-color var(--transition-fast),
         border-color var(--transition-fast),
         box-shadow var(--transition-fast);
 }
@@ -369,8 +424,8 @@ html, body {
 
 .color-swatch {
     flex: none;
-    width: var(--icon-size);
-    height: var(--icon-size);
+    width: var(--swatch-size);
+    height: var(--swatch-size);
     border: var(--border-width) solid var(--color-border-strong);
     border-radius: var(--radius-sm);
     background-color: var(--swatch-color, transparent); /* syncColorControl() */
@@ -378,6 +433,7 @@ html, body {
 
 .color-value {
     overflow: hidden;
+    font-weight: var(--font-weight-medium);
     font-variant-numeric: tabular-nums;
     text-transform: uppercase;
     white-space: nowrap;
@@ -386,21 +442,19 @@ html, body {
 /* ---------- Section toggle ---------- */
 
 /* Switch On/Off: native checkbox (role="switch"). Track — фон, knob — radial-gradient,
-   сдвиг через background-position. Knob 12px в квадрате 16 × 16.
+   сдвиг через background-position. Knob 14px в квадрате 18 × 18.
    Прозрачная рамка — для общего focus (border-color); фон считается от border-box,
    поэтому геометрия knob от рамки не зависит. */
 .section-toggle {
-    --toggle-width: var(--control-height-small);
-    --toggle-height: var(--space-4);
     flex: none;
     width: var(--toggle-width);
     height: var(--toggle-height);
     margin: 0;
     border: var(--border-width) solid transparent;
-    border-radius: var(--radius-lg);
+    border-radius: calc(var(--toggle-height) / 2);
     background-color: var(--color-border-strong);
     background-image: radial-gradient(circle,
-        var(--color-control-bg) 5.5px, transparent 6px);
+        var(--color-panel-bg) 6.5px, transparent 7px);
     background-origin: border-box;
     background-size: var(--toggle-height) var(--toggle-height);
     background-repeat: no-repeat;
@@ -424,18 +478,25 @@ html, body {
 
 .section-heading {
     margin: 0;
-    color: var(--color-text-secondary);
-    font-size: var(--font-size-xs);
+    color: var(--color-text);
+    font-size: var(--font-size-lg);
     font-weight: var(--font-weight-semibold);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    line-height: var(--line-height-heading);
+}
+
+/* ---------- Field label ---------- */
+
+.field-label {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
 }
 
 /* ---------- Divider ---------- */
 
 .divider {
     height: var(--border-width);
-    margin: var(--space-5) 0;
+    margin: var(--space-4) 0;
     border: 0;
     background-color: var(--color-border);
 }
@@ -448,29 +509,21 @@ html, body {
     font-size: var(--font-size-sm);
 }
 
+/* Локальная валидация: текст без плашки (warning — с иконкой) */
 .inline-message {
     display: flex;
     align-items: flex-start;
-    gap: var(--space-2);
+    gap: var(--space-1);
     margin: 0;
-    padding: var(--space-2);
-    border-radius: var(--radius-md);
     font-size: var(--font-size-sm);
-    line-height: 1.4;
+    line-height: var(--line-height-base);
 }
 
 .help-text:empty,
 .inline-message:empty { display: none; }
 
-.inline-message--error {
-    background-color: var(--color-error-bg);
-    color: var(--color-error);
-}
-
-.inline-message--warning {
-    background-color: var(--color-warning-bg);
-    color: var(--color-warning);
-}
+.inline-message--error { color: var(--color-error); }
+.inline-message--warning { color: var(--color-warning); }
 
 /* Иконка warning: маска, цвет = currentColor. */
 .inline-message--warning::before {
@@ -482,6 +535,48 @@ html, body {
     background-color: currentColor;
     -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2 14.5 13.5h-13z'/%3E%3Cpath d='M8 6.5v3M8 11.75v.01'/%3E%3C/svg%3E") no-repeat center / contain;
     mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2 14.5 13.5h-13z'/%3E%3Cpath d='M8 6.5v3M8 11.75v.01'/%3E%3C/svg%3E") no-repeat center / contain;
+}
+
+/* ---------- Empty state ---------- */
+
+/* Кластер: icon → 12 → title → 8 → action → 8 → hint */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    text-align: center;
+}
+
+.empty-state__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--empty-icon-box);
+    height: var(--empty-icon-box);
+    margin-bottom: var(--space-1); /* + gap = 12px */
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background-color: var(--color-panel-bg);
+    color: var(--color-text-secondary);
+}
+
+.empty-state__icon .icon {
+    width: var(--icon-size-lg);
+    height: var(--icon-size-lg);
+}
+
+.empty-state__title {
+    margin: 0;
+    color: var(--color-text);
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+}
+
+.empty-state__hint {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
 }
 
 /* ---------- Tooltip ---------- */
@@ -521,16 +616,21 @@ html, body {
 .button--secondary:hover,
 .button--ghost:hover,
 .icon-button:hover,
+.segmented-control__button:hover,
 .anchor-cell:hover { background-color: var(--color-control-hover); }
 
 .input:hover,
 .select:hover,
-.color-control:hover { border-color: var(--color-border-strong); }
+.color-control:hover {
+    border-color: var(--color-border-strong);
+    background-color: var(--color-panel-bg);
+}
 
 /* Active */
 .button--secondary:active,
 .button--ghost:active,
 .icon-button:active,
+.segmented-control__button:active,
 .anchor-cell:active { background-color: var(--color-control-active); }
 
 /* Invalid */
@@ -542,14 +642,14 @@ html, body {
 .input:focus-visible,
 .select:focus-visible,
 .section-toggle:focus-visible,
-.app-preview-empty-action:focus-visible,
 .color-control:has(input:focus-visible) {
     outline: none;
     border-color: var(--color-accent);
     box-shadow: var(--focus-ring);
 }
 
-/* Ячейки обрезаны overflow контейнера — то же кольцо внутрь */
+/* Сегменты и ячейки обрезаны overflow контейнера — то же кольцо внутрь */
+.segmented-control__button:focus-visible,
 .anchor-cell:focus-visible {
     outline: none;
     box-shadow: var(--focus-ring-inset);
@@ -560,7 +660,8 @@ html, body {
 .range:focus-visible::-webkit-slider-thumb { box-shadow: var(--focus-ring); }
 .range:focus-visible::-moz-range-thumb { box-shadow: var(--focus-ring); }
 
-/* Selected — toggle-like controls: Pick, lock, anchor */
+/* Selected — toggle-like controls: Pick, lock, anchor.
+   У anchor-cell рамки нет: selected = фон accent-soft + accent-точка. */
 .button[aria-pressed="true"],
 .icon-button[aria-pressed="true"],
 .anchor-cell[aria-pressed="true"] {
@@ -569,13 +670,8 @@ html, body {
     color: var(--color-accent);
 }
 
-/* У ячейки anchor нет рамки (сетку рисует контейнер) — accent-рамка внутрь */
-.anchor-cell[aria-pressed="true"] { box-shadow: var(--selected-ring-inset); }
-
-/* Выбранная ячейка в фокусе: focus-кольцо уже включает 1px accent-рамку */
-.anchor-cell[aria-pressed="true"]:focus-visible { box-shadow: var(--focus-ring-inset); }
-
-/* Disabled — атрибут disabled. Anchor гасится целиком вместе с линиями сетки. */
+/* Disabled — атрибут disabled. Anchor и segmented control без доступных
+   кнопок гасятся целиком вместе с линиями сетки / separators. */
 .button:disabled,
 .icon-button:disabled,
 .input:disabled,
@@ -583,7 +679,8 @@ html, body {
 .range:disabled,
 .section-toggle:disabled,
 .color-control:has(input:disabled),
-.anchor-picker:has(.anchor-cell:disabled) {
+.anchor-picker:has(.anchor-cell:disabled),
+.segmented-control:not(:has(:enabled)) {
     opacity: var(--disabled-opacity);
     cursor: default;
     pointer-events: none;
@@ -601,7 +698,14 @@ html, body {
     color: var(--color-text-muted);
 }
 
+/* Без собственных рамки и фона: только muted text */
 .button--ghost:disabled { color: var(--color-text-muted); }
+
+.segmented-control__button:disabled {
+    color: var(--color-text-muted);
+    cursor: default;
+    pointer-events: none;
+}
 
 /* ==========================================================================
    Design system — layouts
@@ -617,9 +721,9 @@ html, body {
     background-color: var(--color-app-bg);
     color: var(--color-text);
     font-family: var(--font-ui);
-    font-size: var(--font-size-md);
+    font-size: var(--font-size-lg);
     font-weight: var(--font-weight-normal);
-    line-height: 1.4;
+    line-height: var(--line-height-base);
 }
 
 /* ---------- Toolbar ---------- */
@@ -638,17 +742,26 @@ html, body {
     min-width: 0;
     margin: 0;
     overflow: hidden;
-    font-size: var(--font-size-lg);
+    font-size: var(--font-size-xl);
     font-weight: var(--font-weight-semibold);
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.app-toolbar-actions {
+/* Reset — 16px — [Open image  Export PNG] */
+.toolbar-actions {
     display: flex;
     flex: none;
-    gap: var(--space-2);
+    align-items: center;
+    gap: var(--space-4);
     margin-left: auto;
+}
+
+/* Ряд кнопок одной смысловой группы */
+.button-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
 }
 
 /* ---------- Workspace & preview ---------- */
@@ -705,7 +818,7 @@ html, body {
 
 .app-preview-canvas.is-picking { cursor: crosshair; }
 
-/* Слои поверх preview: empty state и drag state */
+/* Слои поверх preview: empty state (содержимое — .empty-state) и drag state */
 .app-preview-empty,
 .app-preview-drop {
     position: absolute;
@@ -714,29 +827,6 @@ html, body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: var(--space-1);
-    text-align: center;
-}
-
-.app-preview-empty { color: var(--color-text-secondary); }
-.app-preview-empty p { margin: 0; }
-
-.app-preview-empty-title {
-    color: var(--color-text);
-    font-weight: var(--font-weight-medium);
-}
-
-/* «choose a file» — текстовая action-ссылка; прозрачная рамка — для общего focus */
-.app-preview-empty-action {
-    padding: 0;
-    border: var(--border-width) solid transparent;
-    border-radius: var(--radius-sm);
-    background: none;
-    color: var(--color-text);
-    font: inherit;
-    text-decoration: underline;
-    text-underline-offset: 2px;
-    cursor: pointer;
 }
 
 /* pointer-events: none — drag-события идут к preview-area как раньше */
@@ -771,6 +861,7 @@ html, body {
 /* Divider без содержимого: без запрета сжатия исчезает при переполнении по высоте */
 .app-sidebar > .divider { flex-shrink: 0; }
 
+/* Секция: header — 12px — содержимое; поля внутри fieldset — через 12px */
 .sidebar-section,
 .control-fieldset {
     display: flex;
@@ -787,80 +878,71 @@ html, body {
 }
 
 .control-fieldset:disabled,
-.control-fieldset:disabled :is(.value-label, .value-separator, .unit) {
+.control-fieldset:disabled :is(.field-label, .field-label-row, .dimension-control__separator, .unit) {
     color: var(--color-text-muted);
 }
 
 /* ---------- Section header ---------- */
 
 /* Одинаковый у всех секций: заголовок + опциональный switch (Background, Crop).
-   min-height = высота .section-toggle — заголовки стоят на одной высоте. */
+   Высоту задаёт line-height заголовка (20px) — switch (18px) её не меняет. */
 .section-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: var(--space-2);
-    min-height: var(--space-4);
 }
 
-/* ---------- Control rows ---------- */
+/* ---------- Fields ---------- */
 
-/* Label + control */
-.control-row {
-    display: grid;
-    grid-template-columns: var(--label-width) minmax(0, 1fr);
-    gap: var(--space-2);
-    align-items: center;
+/* Label над control */
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 0;
 }
 
-/* Для control выше одной строки (anchor picker): label по первой строке */
-.control-row--top { align-items: start; }
-.control-row--top .control-label { line-height: var(--control-height); }
-
-.control-group {
+/* Связанные controls в одну строку: [color][Pick], [W × H][lock], [margin] px */
+.field-row {
     display: flex;
     align-items: center;
     gap: var(--space-2);
     min-width: 0;
 }
 
-/* Slider: label, track, значение фиксированной ширины */
-.slider-row {
-    display: grid;
-    grid-template-columns: var(--label-width) minmax(0, 1fr) var(--control-height);
+/* Label слева, текущее значение справа: Tolerance … 12 */
+.field-label-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
     gap: var(--space-2);
-    align-items: center;
-}
-
-.slider-value {
-    text-align: right;
+    color: var(--color-text);
+    font-size: var(--font-size-sm);
     font-variant-numeric: tabular-nums;
 }
 
-/* Compact value row: W [ ] × H [ ] [lock]; button-row — ряд icon buttons */
-.value-row,
-.value-field,
-.button-row {
+/* [64] × [48]: поля одинаковой ширины, не растягиваются */
+.dimension-control {
     display: flex;
     align-items: center;
     gap: var(--space-2);
 }
 
-.value-label,
-.value-separator,
+.dimension-control__separator,
 .unit { color: var(--color-text-secondary); }
 
 /* ---------- Anchor picker ---------- */
 
 /* 3 × 3 anchors: единая сетка — линии = фон контейнера в зазорах 1px между ячейками.
-   Radius только у внешнего контейнера. */
+   Radius только у внешнего контейнера; max-content — не растягивается в .field. */
 .anchor-picker {
     display: grid;
-    grid-template-columns: repeat(3, var(--control-height-small));
+    grid-template-columns: repeat(3, var(--control-height-compact));
     gap: var(--border-width);
-    justify-self: start;
+    width: max-content;
     border: var(--border-width) solid var(--color-border);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-lg);
     background-color: var(--color-border);
     overflow: hidden;
 }
@@ -872,7 +954,7 @@ html, body {
     align-items: center;
     gap: var(--space-3);
     min-width: 0;
-    padding: 0 var(--space-3);
+    padding: 0 var(--space-4);
     border-top: var(--border-width) solid var(--color-border);
     background-color: var(--color-panel-bg);
     color: var(--color-text-secondary);
@@ -884,17 +966,7 @@ html, body {
     white-space: nowrap;
 }
 
-.bottom-bar-file {
-    max-width: var(--bottom-bar-file-width);
-    overflow: hidden;
-    color: var(--color-text-muted);
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-/* #result-size всегда с текстом («No image» или размер) */
-.bottom-bar-file:empty { display: none; }
-
+/* Только временные сообщения (ошибки, пипетка); обычно пуст */
 .bottom-bar-status {
     flex: 1;
     min-width: 0;
@@ -906,18 +978,18 @@ html, body {
 
 .bottom-bar-status.is-error { color: var(--color-error); }
 
-/* [−] 400% [+] */
-.zoom-control {
-    display: flex;
-    align-items: center;
-    gap: var(--space-1);
-    margin-left: auto;
-}
+/* [ − | 400% | + ] — .segmented-control--small */
+.zoom-control { margin-left: auto; }
 
-/* Значение zoom — .select: клик открывает список уровней.
-   Ширина по содержимому, высота как у icon-button--small. */
+/* Значение zoom — select: клик открывает список уровней. Без chevron,
+   ширина по содержимому (перекрывает --segment-width). */
 .zoom-value {
     width: auto;
-    height: var(--control-height-small);
+    padding: 0 var(--space-2);
+    appearance: none;
+    -webkit-appearance: none;
+    color: var(--color-text);
+    text-align: center;
+    text-align-last: center;
     font-variant-numeric: tabular-nums;
 }
