@@ -102,6 +102,53 @@
             </section>
 
             <section class="panel-group">
+                <h2>Crop</h2>
+                <label class="check">
+                    <input id="crop-enabled" type="checkbox" disabled>
+                    Crop image
+                </label>
+                <fieldset id="crop-options" class="options" disabled>
+                    <div class="radio-list" role="radiogroup" aria-label="Crop mode">
+                        <label><input type="radio" name="crop-mode" value="content" checked> Content</label>
+                        <label><input type="radio" name="crop-mode" value="margin"> Content + margin</label>
+                        <label><input type="radio" name="crop-mode" value="fixed"> Fixed size</label>
+                    </div>
+                    <label id="crop-margin-field" class="field" hidden>
+                        <span class="field-label">Margin, px</span>
+                        <input id="crop-margin" type="number" min="0" step="1" inputmode="numeric" aria-describedby="crop-error">
+                    </label>
+                    <div id="crop-fixed-fields" class="crop-fixed" hidden>
+                        <div class="size-row">
+                            <label class="field">
+                                <span class="field-label">Width, px</span>
+                                <input id="crop-width" type="number" min="1" step="1" inputmode="numeric" aria-describedby="crop-error">
+                            </label>
+                            <label class="field">
+                                <span class="field-label">Height, px</span>
+                                <input id="crop-height" type="number" min="1" step="1" inputmode="numeric" aria-describedby="crop-error">
+                            </label>
+                        </div>
+                        <div class="field">
+                            <span class="field-label">Anchor</span>
+                            <div class="anchor-grid" role="group" aria-label="Anchor">
+                                <button type="button" data-anchor="top-left" aria-label="Top left" title="Top left">↖</button>
+                                <button type="button" data-anchor="top" aria-label="Top" title="Top">↑</button>
+                                <button type="button" data-anchor="top-right" aria-label="Top right" title="Top right">↗</button>
+                                <button type="button" data-anchor="left" aria-label="Left" title="Left">←</button>
+                                <button type="button" data-anchor="center" aria-label="Center" title="Center">•</button>
+                                <button type="button" data-anchor="right" aria-label="Right" title="Right">→</button>
+                                <button type="button" data-anchor="bottom-left" aria-label="Bottom left" title="Bottom left">↙</button>
+                                <button type="button" data-anchor="bottom" aria-label="Bottom" title="Bottom">↓</button>
+                                <button type="button" data-anchor="bottom-right" aria-label="Bottom right" title="Bottom right">↘</button>
+                            </div>
+                        </div>
+                    </div>
+                    <p id="crop-note" class="hint"></p>
+                    <p id="crop-error" class="field-error" role="alert"></p>
+                </fieldset>
+            </section>
+
+            <section class="panel-group">
                 <h2>Image</h2>
                 <dl class="info">
                     <dt>File</dt>

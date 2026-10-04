@@ -5,12 +5,14 @@ const SUPPORTED_EXTENSIONS = /\.(png|jpe?g)$/i;
 const PICK_TRANSPARENT_MESSAGE = 'Transparent pixel — pick another one.';
 const PROCESS_ERROR_MESSAGE = 'Could not apply these settings.';
 const PREVIEW_ERROR_MESSAGE = 'Preview could not be updated. Export is disabled.';
-// Ограничение приложения для явного Resize (самое строгое ограничение canvas
-// по MDN — iOS, 4096 × 4096). Не гарантирует успешной отрисовки.
-const MAX_RESIZE_SIDE = 4096;
+// Ограничение приложения для создаваемого canvas (Resize, Crop; самое строгое
+// ограничение canvas по MDN — iOS, 4096 × 4096). Не гарантирует успешной отрисовки.
+const MAX_RESIZE_SIDE = ImageProcessing.MAX_CANVAS_SIDE;
 const RESIZE_SIZE_ERROR = 'Enter a whole number greater than 0.';
 const RESIZE_LIMIT_ERROR = `Resize is limited to ${MAX_RESIZE_SIDE} px per side.`;
 const RESIZE_RATIO_LIMIT_ERROR = `Preserving the ratio would exceed ${MAX_RESIZE_SIDE} px per side.`;
+const CROP_MARGIN_ERROR = 'Enter a whole number, 0 or greater.';
+const CROP_EMPTY_NOTE = 'No visible content — Crop is not applied.';
 
 const state = {
     originalImage: null, // ImageData; никогда не изменяется
@@ -20,6 +22,9 @@ const state = {
     // Текст полей Width/Height (UI-состояние). Может быть пустым, незавершённым
     // или недопустимым; в обработку попадает только через commitResizeDraft().
     resizeDraft: { width: '', height: '' },
+    cropResult: null,    // геометрия Crop из process(); обновляется вместе с resultImage
+    // Текст полей Crop (UI-состояние), по образцу resizeDraft; применяется через commitCropDraft().
+    cropDraft: { margin: '', width: '', height: '' },
     zoom: 1,
     isPicking: false,    // режим пипетки; UI-состояние, не настройка обработки
     previewFailed: false // canvas не соответствует результату; экспорт и пипетка отключены
@@ -54,7 +59,18 @@ const els = {
     resizeWidth: document.getElementById('resize-width'),
     resizeHeight: document.getElementById('resize-height'),
     resizeError: document.getElementById('resize-error'),
-    resizeKeepRatio: document.getElementById('resize-keep-ratio')
+    resizeKeepRatio: document.getElementById('resize-keep-ratio'),
+    cropEnabled: document.getElementById('crop-enabled'),
+    cropOptions: document.getElementById('crop-options'),
+    cropModeInputs: document.querySelectorAll('input[name="crop-mode"]'),
+    cropMarginField: document.getElementById('crop-margin-field'),
+    cropMargin: document.getElementById('crop-margin'),
+    cropFixedFields: document.getElementById('crop-fixed-fields'),
+    cropWidth: document.getElementById('crop-width'),
+    cropHeight: document.getElementById('crop-height'),
+    cropAnchorButtons: document.querySelectorAll('[data-anchor]'),
+    cropNote: document.getElementById('crop-note'),
+    cropError: document.getElementById('crop-error')
 };
 
 const previewContext = els.canvas.getContext('2d');
@@ -81,7 +97,14 @@ function createDefaultSettings(width, height) {
             height: height,
             preserveAspectRatio: true
         },
-        crop: {}
+        crop: {
+            enabled: false,
+            mode: 'content',   // 'content' | 'margin' | 'fixed'
+            margin: 0,         // px результата после Resize
+            width: width,      // Fixed size; не зависит от Transform и Resize
+            height: height,
+            anchor: 'center'   // ключ CROP_ANCHORS в image-processing.js
+        }
     };
 }
 
@@ -89,9 +112,11 @@ function createDefaultSettings(width, height) {
 
 // Полный пересчёт результата из оригинала. Предыдущий результат не используется.
 function reprocess() {
-    state.resultImage = state.originalImage
+    const processed = state.originalImage
         ? ImageProcessing.process(state.originalImage, state.settings)
         : null;
+    state.resultImage = processed ? processed.image : null;
+    state.cropResult = processed ? processed.crop : null;
     render();
 }
 
@@ -103,17 +128,21 @@ function reprocess() {
 function applySettings(next, syncDraft = false) {
     const previousSettings = state.settings;
     const previousResult = state.resultImage;
+    const previousCrop = state.cropResult;
 
     try {
-        const result = ImageProcessing.process(state.originalImage, next);
+        const processed = ImageProcessing.process(state.originalImage, next);
         state.settings = next;
-        state.resultImage = result;
+        state.resultImage = processed.image;
+        state.cropResult = processed.crop;
         if (syncDraft) syncResizeDraft();
         render();
     } catch (error) {
         state.settings = previousSettings;
         state.resultImage = previousResult;
+        state.cropResult = previousCrop;
         syncResizeDraft();
+        syncCropDraft();
         try {
             render();
             showStatus(PROCESS_ERROR_MESSAGE, true);
@@ -175,6 +204,7 @@ function render() {
         });
         renderBackgroundControls(hasImage);
         renderResizeControls(hasImage);
+        renderCropControls(hasImage);
 
         if (!hasImage) {
             els.fileNameValue.textContent = '—';
@@ -201,7 +231,7 @@ function renderPreviewControls() {
     const isPreviewReady = state.resultImage !== null && !state.previewFailed;
     if (!isPreviewReady) state.isPicking = false;
 
-    els.exportButton.disabled = !isPreviewReady;
+    els.exportButton.disabled = !isPreviewReady || hasCropConflict();
     els.bgPickButton.disabled = !isPreviewReady || !state.settings.background.enabled;
     els.bgPickButton.setAttribute('aria-pressed', String(state.isPicking));
     els.canvas.classList.toggle('is-picking', state.isPicking);
@@ -278,7 +308,7 @@ function getResizeDraftCheck() {
 
 function withAppliedSize(message) {
     const resize = state.settings.resize;
-    return `${message} Preview shows ${resize.width} × ${resize.height} px.`;
+    return `${message} Resize stays at ${resize.width} × ${resize.height} px.`;
 }
 
 function getResizeNote() {
@@ -288,6 +318,73 @@ function getResizeNote() {
     return ImageProcessing.getResizeMethod(base.width, base.height, resize) === 'area'
         ? 'Area applies to downscaling.'
         : 'Upscaling — Nearest is used.';
+}
+
+// Crop не применён из-за размера: preview не соответствует настройкам, экспорт запрещён.
+function hasCropConflict() {
+    const crop = state.cropResult;
+    return crop !== null && (crop.status === 'overflow' || crop.status === 'too-large');
+}
+
+// Поля показывают черновик; сообщение = ошибка черновика + конфликт размера.
+function renderCropControls(hasImage) {
+    const crop = state.settings.crop;
+    const check = hasImage ? getCropDraftCheck()
+        : { marginInvalid: false, widthInvalid: false, heightInvalid: false, message: '' };
+
+    els.cropEnabled.disabled = !hasImage;
+    els.cropEnabled.checked = crop.enabled;
+    els.cropOptions.disabled = !hasImage || !crop.enabled;
+    els.cropModeInputs.forEach((input) => {
+        input.checked = input.value === crop.mode;
+    });
+    els.cropMarginField.hidden = crop.mode !== 'margin';
+    els.cropFixedFields.hidden = crop.mode !== 'fixed';
+
+    renderResizeField(els.cropMargin, state.cropDraft.margin, check.marginInvalid);
+    renderResizeField(els.cropWidth, state.cropDraft.width, check.widthInvalid);
+    renderResizeField(els.cropHeight, state.cropDraft.height, check.heightInvalid);
+    els.cropAnchorButtons.forEach((button) => {
+        button.setAttribute('aria-pressed', String(button.dataset.anchor === crop.anchor));
+    });
+
+    const message = [check.message, getCropConflictMessage()].filter(Boolean).join(' ');
+    if (els.cropError.textContent !== message) els.cropError.textContent = message;
+    els.cropNote.textContent = state.cropResult && state.cropResult.status === 'empty' ? CROP_EMPTY_NOTE : '';
+}
+
+// Проверяются только поля текущего режима включённого Crop.
+function getCropDraftCheck() {
+    const crop = state.settings.crop;
+    const check = { marginInvalid: false, widthInvalid: false, heightInvalid: false, message: '' };
+    if (!crop.enabled) return check;
+
+    if (crop.mode === 'margin') {
+        check.marginInvalid = parseCropField('margin', state.cropDraft.margin) === null;
+        if (check.marginInvalid) check.message = `${CROP_MARGIN_ERROR} Margin stays at ${crop.margin} px.`;
+    } else if (crop.mode === 'fixed') {
+        check.widthInvalid = parseCropField('width', state.cropDraft.width) === null;
+        check.heightInvalid = parseCropField('height', state.cropDraft.height) === null;
+        if (check.widthInvalid || check.heightInvalid) {
+            check.message = `${RESIZE_SIZE_ERROR} Fixed size stays at ${crop.width} × ${crop.height} px.`;
+        }
+    }
+    return check;
+}
+
+function getCropConflictMessage() {
+    const crop = state.cropResult;
+    if (!crop) return '';
+    if (crop.status === 'overflow') {
+        return `Content ${crop.contentWidth} × ${crop.contentHeight} px does not fit `
+            + `${crop.width} × ${crop.height} px. Preview shows the image without Crop. Increase the size.`;
+    }
+    if (crop.status === 'too-large') {
+        // Пределы — из обработки, по тому же правилу, что и проверка.
+        return `Crop result ${crop.width} × ${crop.height} px exceeds the allowed `
+            + `${crop.maxWidth} × ${crop.maxHeight} px. Preview shows the image without Crop.`;
+    }
+    return '';
 }
 
 function showStatus(message, isError = false) {
@@ -329,6 +426,7 @@ async function loadFile(file) {
     state.fileName = file.name;
     state.settings = createDefaultSettings(imageData.width, imageData.height);
     syncResizeDraft();
+    syncCropDraft();
     state.zoom = 1;
     state.isPicking = false;
     showStatus('');
@@ -512,6 +610,54 @@ function onKeepRatioChange() {
     updateSettings('resize', { preserveAspectRatio: true, width: resize.width, height: height }, true);
 }
 
+// ---------- Crop ----------
+
+// Margin — целое >= 0; Width/Height — положительное целое. Иначе null.
+function parseCropField(field, text) {
+    if (field !== 'margin') return parseResizeSize(text);
+    const trimmed = text.trim();
+    if (!/^\d+$/.test(trimmed)) return null;
+    const value = Number(trimmed);
+    return Number.isSafeInteger(value) ? value : null;
+}
+
+// Черновик = применённые значения (до загрузки — пустые поля).
+function syncCropDraft() {
+    const crop = state.settings.crop;
+    state.cropDraft = state.originalImage
+        ? { margin: String(crop.margin), width: String(crop.width), height: String(crop.height) }
+        : { margin: '', width: '', height: '' };
+}
+
+// Применяет каждое корректное поле, отличающееся от настроек. Поля независимы.
+// Размер результата и вместимость проверяет обработка (статус Crop).
+function commitCropDraft() {
+    const crop = state.settings.crop;
+    const patch = {};
+    ['margin', 'width', 'height'].forEach((field) => {
+        const value = parseCropField(field, state.cropDraft[field]);
+        if (value !== null && value !== crop[field]) patch[field] = value;
+    });
+
+    if (Object.keys(patch).length > 0) updateSettings('crop', patch);
+    else renderCropControls(true);
+}
+
+function onCropFieldInput(field, input) {
+    if (!state.originalImage) return;
+    state.cropDraft[field] = input.value;
+    commitCropDraft();
+}
+
+// Завершение ввода (blur, Enter): корректное значение нормализуется,
+// некорректное откатывается к применённому.
+function onCropFieldCommit(field) {
+    if (!state.originalImage) return;
+    const value = parseCropField(field, state.cropDraft[field]);
+    state.cropDraft[field] = String(value !== null ? value : state.settings.crop[field]);
+    commitCropDraft();
+}
+
 // ---------- Color picking ----------
 
 // Убирает только подсказку пипетки; ошибки загрузки и прочие сообщения остаются.
@@ -532,8 +678,8 @@ function rgbToHex(r, g, b) {
 }
 
 // Пипетка выбирает только цвет. Читает оригинал: так можно повторно выбрать
-// уже удалённый цвет. Точка preview переводится в оригинал обратным Resize,
-// затем обратной трансформацией. Crop пока не меняет геометрию.
+// уже удалённый цвет. Точка preview переводится в оригинал обратным Crop,
+// затем обратным Resize и обратной трансформацией.
 function pickColor(event) {
     const image = state.originalImage;
     if (!state.isPicking || !image || state.previewFailed) return;
@@ -546,8 +692,15 @@ function pickColor(event) {
     const transform = state.settings.transform;
     const resize = state.settings.resize;
     const base = ImageProcessing.getTransformedSize(image.width, image.height, transform);
+    // Размер после Resize всегда resize.width × resize.height.
+    const cropped = ImageProcessing.inverseCropPoint(
+        previewX, previewY, state.cropResult, resize.width, resize.height);
+    if (!cropped) {
+        showStatus(PICK_TRANSPARENT_MESSAGE); // добавленная прозрачная область
+        return;
+    }
     const resized = ImageProcessing.inverseResizePoint(
-        previewX, previewY, base.width, base.height, resize.width, resize.height);
+        cropped.x, cropped.y, base.width, base.height, resize.width, resize.height);
     const point = ImageProcessing.inverseTransformPoint(
         resized.x, resized.y, image.width, image.height, transform);
 
@@ -566,7 +719,7 @@ function pickColor(event) {
 // ---------- Actions ----------
 
 function exportPng() {
-    if (!state.resultImage || state.previewFailed) return;
+    if (!state.resultImage || state.previewFailed || hasCropConflict()) return;
     const fileName = getExportFileName(state.fileName);
 
     // Preview canvas содержит результат в натуральном размере;
@@ -596,6 +749,7 @@ function reset() {
     if (!state.originalImage) return;
     state.settings = createDefaultSettings(state.originalImage.width, state.originalImage.height);
     syncResizeDraft();
+    syncCropDraft();
     state.zoom = 1;
     state.isPicking = false;
     showStatus('');
@@ -667,6 +821,28 @@ els.resizeHeight.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') onResizeSizeCommit('height');
 });
 els.resizeKeepRatio.addEventListener('change', onKeepRatioChange);
+
+els.cropEnabled.addEventListener('change', () => {
+    updateSettings('crop', { enabled: els.cropEnabled.checked });
+});
+
+els.cropModeInputs.forEach((input) => {
+    input.addEventListener('change', () => {
+        if (input.checked) updateSettings('crop', { mode: input.value });
+    });
+});
+
+els.cropAnchorButtons.forEach((button) => {
+    button.addEventListener('click', () => updateSettings('crop', { anchor: button.dataset.anchor }));
+});
+
+[['margin', els.cropMargin], ['width', els.cropWidth], ['height', els.cropHeight]].forEach(([field, input]) => {
+    input.addEventListener('input', () => onCropFieldInput(field, input));
+    input.addEventListener('blur', () => onCropFieldCommit(field));
+    input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') onCropFieldCommit(field);
+    });
+});
 
 els.canvas.addEventListener('click', pickColor);
 
