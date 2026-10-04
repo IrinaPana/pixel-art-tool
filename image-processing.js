@@ -1,6 +1,18 @@
 'use strict';
 
 const ImageProcessing = (function () {
+    // Ограничение стороны создаваемого canvas (самое строгое по MDN — iOS).
+    const MAX_CANVAS_SIDE = 4096;
+    // Пиксель относится к содержимому при alpha >= порога. Порог 1 учитывает
+    // любые полупрозрачные края (в том числе после Area). RGBA не изменяется.
+    const CONTENT_ALPHA_THRESHOLD = 1;
+    // Позиция anchor по осям: 0 — начало, 1 — центр, 2 — конец.
+    const CROP_ANCHORS = {
+        'top-left': [0, 0],    'top': [1, 0],    'top-right': [2, 0],
+        'left': [0, 1],        'center': [1, 1], 'right': [2, 1],
+        'bottom-left': [0, 2], 'bottom': [1, 2], 'bottom-right': [2, 2]
+    };
+
     function cloneImageData(imageData) {
         return new ImageData(
             new Uint8ClampedArray(imageData.data),
@@ -12,7 +24,7 @@ const ImageProcessing = (function () {
     // Шаги pipeline. Каждый получает рабочее изображение и свою группу
     // настроек, возвращает ImageData (при необходимости с новыми размерами).
     // Шаги не изменяют настройки и не обращаются к DOM.
-    // Нереализованные шаги возвращают изображение без изменений.
+    // applyCrop() дополнительно возвращает геометрию Crop.
 
     // '#rrggbb' → [r, g, b]
     function parseHexColor(hex) {
@@ -270,30 +282,160 @@ const ImageProcessing = (function () {
         };
     }
 
+    // Bounding box пикселей с alpha >= CONTENT_ALPHA_THRESHOLD или null.
+    function findContentBounds(image) {
+        const data = image.data;
+        const width = image.width;
+        const height = image.height;
+        let minX = width;
+        let minY = height;
+        let maxX = -1;
+        let maxY = -1;
+
+        for (let y = 0; y < height; y++) {
+            const row = y * width;
+            for (let x = 0; x < width; x++) {
+                if (data[(row + x) * 4 + 3] < CONTENT_ALPHA_THRESHOLD) continue;
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                maxY = y;
+            }
+        }
+        return maxX < 0 ? null : { minX: minX, minY: minY, maxX: maxX, maxY: maxY };
+    }
+
+    function anchorOffset(free, position) {
+        if (position === 0) return 0;
+        return position === 1 ? Math.floor(free / 2) : free;
+    }
+
+    // Копирует src в dst со смещением (offsetX, offsetY); части за пределами dst
+    // отбрасываются, непокрытая область dst остаётся прозрачной. RGBA — 32-битными словами.
+    function copyWithOffset(src, dst, offsetX, offsetY) {
+        const x0 = Math.max(0, offsetX);
+        const x1 = Math.min(dst.width, offsetX + src.width);
+        const y0 = Math.max(0, offsetY);
+        const y1 = Math.min(dst.height, offsetY + src.height);
+        if (x0 >= x1 || y0 >= y1) return;
+
+        const s = new Uint32Array(src.data.buffer, src.data.byteOffset, src.width * src.height);
+        const d = new Uint32Array(dst.data.buffer, dst.data.byteOffset, dst.width * dst.height);
+        for (let y = y0; y < y1; y++) {
+            const from = (y - offsetY) * src.width + (x0 - offsetX);
+            d.set(s.subarray(from, from + x1 - x0), y * dst.width + x0);
+        }
+    }
+
+    // Crop после Resize. Возвращает { image, crop }.
+    // Фактический размер результата — всегда image.width × image.height;
+    // размеры в crop описывают запрос и не обязаны с ним совпадать.
+    //   crop.status:
+    //     'off'       — Crop выключен; image — вход без изменений;
+    //     'empty'     — Content / margin без содержимого; image — вход без изменений;
+    //     'applied'   — Crop применён; image — новый ImageData crop.width × crop.height;
+    //     'overflow'  — содержимое не помещается в Fixed size; image — вход без изменений;
+    //     'too-large' — запрошенный размер превышает предел; image — вход без изменений.
+    //   Поля по статусам:
+    //     все статусы: offsetX/offsetY — позиция начала входа в результате
+    //       (0, если Crop не применён), для inverseCropPoint();
+    //     'applied', 'overflow', 'too-large': width/height — рассчитанный (запрошенный)
+    //       размер результата; при 'overflow' и 'too-large' он отличается от image;
+    //       contentWidth/contentHeight — bounding box содержимого (0 × 0 для пустого Fixed);
+    //       maxWidth/maxHeight — допустимый предел сторон: max(MAX_CANVAS_SIDE, сторона входа).
+    //     'off', 'empty': размерных полей нет.
     function applyCrop(image, options) {
-        return image;
+        if (!options.enabled) {
+            return { image: image, crop: { status: 'off', offsetX: 0, offsetY: 0 } };
+        }
+
+        const bounds = findContentBounds(image);
+        if (!bounds && options.mode !== 'fixed') {
+            return { image: image, crop: { status: 'empty', offsetX: 0, offsetY: 0 } };
+        }
+
+        const contentWidth = bounds ? bounds.maxX - bounds.minX + 1 : 0;
+        const contentHeight = bounds ? bounds.maxY - bounds.minY + 1 : 0;
+        let width;
+        let height;
+        let contentX; // позиция bounding box в результате
+        let contentY;
+
+        if (options.mode === 'fixed') {
+            const anchor = CROP_ANCHORS[options.anchor];
+            width = options.width;
+            height = options.height;
+            contentX = anchorOffset(width - contentWidth, anchor[0]);
+            contentY = anchorOffset(height - contentHeight, anchor[1]);
+        } else {
+            const margin = options.mode === 'margin' ? options.margin : 0;
+            width = contentWidth + 2 * margin;
+            height = contentHeight + 2 * margin;
+            contentX = margin;
+            contentY = margin;
+        }
+
+        const crop = {
+            status: 'applied',
+            offsetX: bounds ? contentX - bounds.minX : 0,
+            offsetY: bounds ? contentY - bounds.minY : 0,
+            width: width,
+            height: height,
+            contentWidth: contentWidth,
+            contentHeight: contentHeight,
+            // Canvas не больше входа допустим всегда; больше — только в пределах MAX_CANVAS_SIDE.
+            maxWidth: Math.max(MAX_CANVAS_SIDE, image.width),
+            maxHeight: Math.max(MAX_CANVAS_SIDE, image.height)
+        };
+
+        // Проверки до выделения памяти.
+        if (width > crop.maxWidth || height > crop.maxHeight) {
+            crop.status = 'too-large';
+        } else if (contentWidth > width || contentHeight > height) {
+            crop.status = 'overflow';
+        }
+        if (crop.status !== 'applied') {
+            crop.offsetX = 0;
+            crop.offsetY = 0;
+            return { image: image, crop: crop };
+        }
+
+        const result = new ImageData(width, height); // прозрачный
+        copyWithOffset(image, result, crop.offsetX, crop.offsetY);
+        return { image: result, crop: crop };
+    }
+
+    // Точка результата Crop → точка изображения после Resize (srcWidth × srcHeight)
+    // или null, если точка в добавленной прозрачной области.
+    function inverseCropPoint(x, y, crop, srcWidth, srcHeight) {
+        const sx = x - crop.offsetX;
+        const sy = y - crop.offsetY;
+        if (sx < 0 || sy < 0 || sx >= srcWidth || sy >= srcHeight) return null;
+        return { x: sx, y: sy };
     }
 
     // Единая точка обработки. Оригинал никогда не изменяется:
     // шаги работают с его копией. Порядок шагов фиксирован:
     //   Remove background → Rotate / Flip → Resize → Crop
+    // Возвращает { image, crop } (см. applyCrop).
     function process(original, settings) {
         let image = cloneImageData(original);
 
         image = applyBackground(image, settings.background);
         image = applyTransform(image, settings.transform);
         image = applyResize(image, settings.resize);
-        image = applyCrop(image, settings.crop);
 
-        return image;
+        return applyCrop(image, settings.crop);
     }
 
     return {
+        MAX_CANVAS_SIDE,
         cloneImageData,
         getTransformedSize,
         getResizeMethod,
         inverseTransformPoint,
         inverseResizePoint,
+        inverseCropPoint,
         process
     };
 })();

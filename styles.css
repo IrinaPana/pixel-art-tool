@@ -28,6 +28,9 @@
 
 * { box-sizing: border-box; }
 
+/* hidden сильнее display у .field / .crop-fixed */
+[hidden] { display: none !important; }
+
 html, body { height: 100%; margin: 0; }
 
 body {
@@ -146,7 +149,8 @@ button.primary {
 
 .segmented button { padding: 6px 0; }
 
-.segmented button[aria-pressed="true"] {
+.segmented button[aria-pressed="true"],
+.anchor-grid button[aria-pressed="true"] {
     background: var(--accent);
     border-color: var(--accent);
     color: var(--accent-text);
@@ -241,6 +245,20 @@ input[type="range"] {
     grid-template-columns: 1fr 1fr;
     gap: 8px;
 }
+
+.crop-fixed {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.anchor-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 32px);
+    gap: 4px;
+}
+
+.anchor-grid button { padding: 4px 0; }
 
 input[type="number"] {
     width: 100%;
