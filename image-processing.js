@@ -3,9 +3,10 @@
 const ImageProcessing = (function () {
     // Ограничение стороны создаваемого canvas (самое строгое по MDN — iOS).
     const MAX_CANVAS_SIDE = 4096;
-    // Пиксель относится к содержимому при alpha >= порога. Порог 1 учитывает
-    // любые полупрозрачные края (в том числе после Area). RGBA не изменяется.
-    const CONTENT_ALPHA_THRESHOLD = 1;
+    // Пиксель относится к содержимому при alpha >= порога. Видимые полупрозрачные
+    // края (в том числе после Area) остаются содержимым; более слабые пиксели
+    // при включённом Crop становятся полностью прозрачными (alpha = 0).
+    const CONTENT_ALPHA_THRESHOLD = 16;
     // Позиция anchor по осям: 0 — начало, 1 — центр, 2 — конец.
     const CROP_ANCHORS = {
         'top-left': [0, 0],    'top': [1, 0],    'top-right': [2, 0],
@@ -282,6 +283,15 @@ const ImageProcessing = (function () {
         };
     }
 
+    // alpha = 0 у пикселей с 0 < alpha < CONTENT_ALPHA_THRESHOLD; RGB не меняется.
+    // Изменяет image на месте: process() передаёт сюда рабочую копию.
+    function clearFaintPixels(image) {
+        const data = image.data;
+        for (let i = 3; i < data.length; i += 4) {
+            if (data[i] < CONTENT_ALPHA_THRESHOLD) data[i] = 0;
+        }
+    }
+
     // Bounding box пикселей с alpha >= CONTENT_ALPHA_THRESHOLD или null.
     function findContentBounds(image) {
         const data = image.data;
@@ -344,11 +354,14 @@ const ImageProcessing = (function () {
     //       contentWidth/contentHeight — bounding box содержимого (0 × 0 для пустого Fixed);
     //       maxWidth/maxHeight — допустимый предел сторон: max(MAX_CANVAS_SIDE, сторона входа).
     //     'off', 'empty': размерных полей нет.
+    // При включённом Crop во всех статусах пиксели с alpha < CONTENT_ALPHA_THRESHOLD
+    // становятся полностью прозрачными (вход изменяется на месте).
     function applyCrop(image, options) {
         if (!options.enabled) {
             return { image: image, crop: { status: 'off', offsetX: 0, offsetY: 0 } };
         }
 
+        clearFaintPixels(image);
         const bounds = findContentBounds(image);
         if (!bounds && options.mode !== 'fixed') {
             return { image: image, crop: { status: 'empty', offsetX: 0, offsetY: 0 } };
